@@ -22,6 +22,8 @@ const App = () => {
   const totalWalkedRef = useRef(0);
   const triggerDistanceRef = useRef(0);
   const touchRef = useRef({ startX: 0, startY: 0, moveX: 0, moveY: 0, active: false });
+  const [particles, setParticles] = useState([]);
+  const lastParticlePos = useRef({ x: pos.x, y: pos.y });
 
   const [inventory, setInventory] = useState([]);
   const [stats, setStats] = useState({ money: 0 });
@@ -90,6 +92,19 @@ const App = () => {
 
         newX = Math.max(0, Math.min(newX, screen.width - playerSize));
         newY = Math.max(0, Math.min(newY, mapHeight - playerSize));
+
+        // --- LÓGICA DE PARTÍCULAS (Rastro) ---
+        const distParticle = Math.sqrt(
+          Math.pow(newX - lastParticlePos.current.x, 2) + 
+          Math.pow(newY - lastParticlePos.current.y, 2)
+        );
+
+        if (distParticle > 20) { // Cria uma partícula a cada 20px percorridos
+          const id = Date.now() + Math.random();
+          setParticles(prev => [...prev, { id, x: newX, y: newY }]);
+          lastParticlePos.current = { x: newX, y: newY };
+          setTimeout(() => setParticles(prev => prev.filter(p => p.id !== id)), 500);
+        }
 
         // --- CÁLCULO DE PROGRESSO ---
         const distanceMoved = Math.sqrt(
@@ -268,6 +283,13 @@ const App = () => {
       touchAction: 'none' // Impede gestos de rolagem/zoom no mobile
     }}>
 
+      <style>{`
+        @keyframes fadeOut {
+          from { opacity: 1; transform: scale(1); }
+          to { opacity: 0; transform: scale(0); }
+        }
+      `}</style>
+
       {/* CONTAINER DO MAPA */}
       <div style={{
         position: 'absolute',
@@ -279,6 +301,20 @@ const App = () => {
       }}>
 
         {mapTiles}
+
+        {/* Partículas (Rastro) */}
+        {particles.map(p => (
+          <div key={p.id} style={{
+            position: 'absolute',
+            left: p.x + (playerSize / 4),
+            top: p.y + (playerSize / 4),
+            width: playerSize / 2,
+            height: playerSize / 2,
+            background: 'rgba(255, 255, 255, 0.5)',
+            animation: 'fadeOut 0.5s forwards',
+            zIndex: 14,
+          }} />
+        ))}
 
         {/* Player */}
         <div style={{
