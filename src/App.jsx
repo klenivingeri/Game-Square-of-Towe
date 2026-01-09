@@ -1,25 +1,25 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { createMatchMap } from './maps/map';
 import { convertPercentage } from './help/convertPercentage';
 
 const App = () => {
   const [screen, setScreen] = useState({ width: window.innerWidth, height: window.innerHeight });
-  const gameMap = createMatchMap(1);
-  const ROWS = gameMap.length; 
-  const COLS = gameMap[0].length; 
+  const gameMap = createMatchMap(0);
+  const ROWS = gameMap.length;
+  const COLS = gameMap[0].length;
 
   const tileW = screen.width / COLS;
-  const tileH = 80; 
+  const tileH = 80;
   const playerSize = tileW * 0.2;
   const mapHeight = ROWS * tileH;
 
   const [pos, setPos] = useState({ x: screen.width / 2, y: mapHeight - 50 });
-  
+
   // --- NOVOS ESTADOS E REFS ---
   const progressBarRef = useRef(null);
   const totalWalkedRef = useRef(0);
   const triggerDistanceRef = useRef(0);
-  
+
   const [inventory, setInventory] = useState([]);
   const [stats, setStats] = useState({ money: 0 });
   const lastPos = useRef({ x: pos.x, y: pos.y });
@@ -49,9 +49,9 @@ const App = () => {
     } else {
       // Aqui entrará a sua lógica de batalha
       alert(`Iniciando batalha com Mob nível: ${nivel}, ${stringLevel}!`);
-      setStats(s => ({ ...s}));
+      setStats(s => ({ ...s }));
     }
-    
+
   };
 
   useEffect(() => {
@@ -62,9 +62,9 @@ const App = () => {
         let newY = prev.y;
         const speed = 6;
 
-        if (keys.current['ArrowUp'] || keys.current['w'])    newY -= speed;
-        if (keys.current['ArrowDown'] || keys.current['s'])  newY += speed;
-        if (keys.current['ArrowLeft'] || keys.current['a'])  newX -= speed;
+        if (keys.current['ArrowUp'] || keys.current['w']) newY -= speed;
+        if (keys.current['ArrowDown'] || keys.current['s']) newY += speed;
+        if (keys.current['ArrowLeft'] || keys.current['a']) newX -= speed;
         if (keys.current['ArrowRight'] || keys.current['d']) newX += speed;
 
         newX = Math.max(0, Math.min(newX, screen.width - playerSize));
@@ -72,21 +72,22 @@ const App = () => {
 
         // --- CÁLCULO DE PROGRESSO ---
         const distanceMoved = Math.sqrt(
-          Math.pow(newX - lastPos.current.x, 2) + 
+          Math.pow(newX - lastPos.current.x, 2) +
           Math.pow(newY - lastPos.current.y, 2)
         );
 
         if (distanceMoved > 0.5) { // Se ele realmente se moveu
           // Lógica de Distância Dinâmica
           const maxDimension = Math.max(screen.width, screen.height);
-          
+
           // Inicializa o trigger na primeira vez
           if (triggerDistanceRef.current === 0) {
             triggerDistanceRef.current = maxDimension * (0.25 + Math.random() * 0.75);
           }
 
-          // Chance de evento surpresa (0.5% por frame) para dar entre 40% e 60% no total
-          if (Math.random() < 0.005) {
+          const currentBarLevel = progressBarRef.current ? convertPercentage(progressBarRef.current.style.width) : 0;
+          // Chance ajustada (0.7%) pois agora só roda quando a barra está acima do nível 3
+          if (currentBarLevel >= 3 && Math.random() < 0.007) {
             handleEvent(newX, newY);
             totalWalkedRef.current = 0;
             triggerDistanceRef.current = maxDimension * (0.25 + Math.random() * 0.75);
@@ -100,32 +101,54 @@ const App = () => {
           }
 
           totalWalkedRef.current += distanceMoved;
-          
-          // A barra enche visualmente em 70% do caminho total (Janela de Tensão)
-          const barFullLimit = triggerDistanceRef.current * 0.90;
-          const visualProgress = Math.min((totalWalkedRef.current / barFullLimit) * 100, 100);
-          console.log(visualProgress)
-          if (progressBarRef.current) {
-            progressBarRef.current.style.width = `${visualProgress}%`;
-            // Fica vermelho quando a barra visual está cheia (perigo iminente)
-            progressBarRef.current.style.background = visualProgress >= 100 ? '#ff4d4d' : 'cyan';
-            progressBarRef.current.style.boxShadow = visualProgress >= 100 ? '0 0 15px #ff4d4d' : '0 0 10px cyan';
-          }
 
           // O evento só dispara quando atinge o trigger real (que é maior que o visual)
           if (totalWalkedRef.current >= triggerDistanceRef.current) {
             handleEvent(newX, newY);
-            
+
             // Reseta e sorteia novo trigger para o próximo ciclo
             totalWalkedRef.current = 0;
             triggerDistanceRef.current = maxDimension * (0.25 + Math.random() * 0.75);
-            
+
             if (progressBarRef.current) {
               progressBarRef.current.style.width = '0%';
               progressBarRef.current.style.background = 'cyan';
             }
           }
           lastPos.current = { x: newX, y: newY };
+        }
+
+        // ATUALIZAÇÃO VISUAL DA BARRA (Executa todo frame, mesmo parado)
+        if (triggerDistanceRef.current > 0) {
+          // A barra enche visualmente em 70% do caminho total (Janela de Tensão)
+          const barFullLimit = triggerDistanceRef.current * 0.90;
+          const visualProgress = Math.min((totalWalkedRef.current / barFullLimit) * 100, 100);
+
+          // EFEITOS DE TREMOR (SHAKE)
+          // 1. Oscilação Horizontal: Gera um número aleatório entre -1.5 e 1.5 para somar à largura
+          const shakeX = (Math.random() - 0.5) * 1;
+          
+          // 2. Oscilação Vertical: Suave em 70% (2) e Forte em 85% (6)
+          const shakeIntensity = visualProgress >= 85 ? 6 : (visualProgress >= 70 ? 2 : 0);
+          const shakeY = (Math.random() - 0.5) * shakeIntensity;
+
+          // Lógica de Cores baseada na porcentagem
+          let barColor = 'cyan';
+          if (visualProgress >= 85) {
+            barColor = '#ff0000'; // Vermelho Escuro
+          } else if (visualProgress >= 70) {
+            barColor = '#ff4d4d'; // Vermelho
+          }
+
+          if (progressBarRef.current) {
+            // Aplica a largura com o tremor (Math.max garante que não fique negativo)
+            progressBarRef.current.style.width = `${Math.max(0, visualProgress + shakeX)}%`;
+            // Aplica a cor calculada e sombra
+            progressBarRef.current.style.background = barColor;
+            progressBarRef.current.style.boxShadow = `0 0 ${visualProgress >= 70 ? '10px' : '5px'} ${barColor}`;
+            // Aplica o pulo vertical para dar a impressão de sair da borda
+            progressBarRef.current.style.transform = `translateY(${shakeY}px)`;
+          }
         }
 
         // 2. CÁLCULO DO LERP (Câmera Suave) dentro do setPos para pegar o newY atualizado
@@ -136,13 +159,13 @@ const App = () => {
         // A fórmula: posição_atual + (destino - posição_atual) * suavidade
         // 0.1 cria o "delay" suave. Se quiser mais rápido, use 0.15. Mais lento, 0.05.
         scrollRef.current = scrollRef.current + (targetScroll - scrollRef.current) * 0.1;
-        
+
         // Sincroniza o estado visual com o cálculo matemático
         setScrollY(scrollRef.current);
 
         return { x: newX, y: newY };
       });
-      
+
       requestAnimationFrame(update);
     };
 
@@ -150,7 +173,7 @@ const App = () => {
     const handleKey = (e) => keys.current[e.key] = e.type === 'keydown';
     window.addEventListener('keydown', handleKey);
     window.addEventListener('keyup', handleKey);
-    
+
     return () => {
       window.removeEventListener('keydown', handleKey);
       window.removeEventListener('keyup', handleKey);
@@ -165,31 +188,51 @@ const App = () => {
   const currentRow = Math.floor(centerY / tileH);
   const currentTileData = gameMap[currentRow]?.[currentCol];
 
+  // Otimização: Memoriza os tiles do mapa para não recriar a cada frame
+  const mapTiles = useMemo(() => {
+    return gameMap.map((row, rIdx) => row.map((tile, cIdx) => (
+      <div key={`${rIdx}-${cIdx}`} style={{
+        position: 'absolute',
+        left: cIdx * tileW,
+        top: rIdx * tileH,
+        width: tileW,
+        height: tileH,
+        backgroundColor: tile.cor,
+        zIndex: tile.zIndex,
+        boxSizing: 'border-box',
+        boxShadow: `0 0 20px ${tile.cor}`,
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+      }} >
+        <div style={{ opacity: 0.5, fontSize: '12px' }}>{tile.nivel}</div>
+      </div>
+    )));
+  }, [gameMap, tileW, tileH]);
+
   return (
-    <div style={{ width: '100vw', height: '100vh', overflow: 'hidden', background: '#000', position: 'relative' }}>
-      
+    <div style={{
+      position: 'fixed', // Fixa o container na tela, ignorando margens do body
+      top: 0,
+      left: 0,
+      width: '100%',
+      height: '100%',
+      overflow: 'hidden',
+      background: '#000',
+      touchAction: 'none' // Impede gestos de rolagem/zoom no mobile
+    }}>
+
       {/* CONTAINER DO MAPA */}
       <div style={{
         position: 'absolute',
-        top: -scrollY, 
+        top: -scrollY,
         left: 0,
         width: '100%',
         height: mapHeight,
-        // IMPORTANTE: Removido o 'transition' do CSS para não conflitar com o Lerp manual
       }}>
-        
-        {gameMap.map((row, rIdx) => row.map((tile, cIdx) => (
-          <div key={`${rIdx}-${cIdx}`} style={{
-            position: 'absolute',
-            left: cIdx * tileW,
-            top: rIdx * tileH,
-            width: tileW,
-            height: tileH,
-            backgroundColor: (rIdx === currentRow && cIdx === currentCol) ? '#fff' : tile.cor,
-            border: '0.1px solid rgba(255,255,255,0.1)',
-            boxSizing: 'border-box'
-          }} />
-        )))}
+
+        {mapTiles}
+
         {/* Player */}
         <div style={{
           position: 'absolute',
@@ -197,9 +240,9 @@ const App = () => {
           top: pos.y,
           width: playerSize,
           height: playerSize,
-          background: 'cyan',
+          background: 'white',
+          zIndex: 15,
           boxShadow: '0 0 15px cyan',
-          zIndex: 10,
         }} />
       </div>
 
@@ -214,24 +257,24 @@ const App = () => {
         background: 'rgba(255,255,255,0.1)',
         borderRadius: '10px',
         border: '2px solid rgba(255,255,255,0.3)',
-        overflow: 'hidden',
         zIndex: 1000
       }}>
-        <div 
+        <div
           ref={progressBarRef}
           style={{
-          width: '0%',
-          height: '100%',
-          background: 'cyan',
-          boxShadow: '0 0 10px cyan'
-        }} />
+            width: '0%',
+            height: '100%',
+            borderRadius: '8px', // Arredonda a barra interna para ficar bonito ao pular
+            background: 'cyan',
+            boxShadow: '0 0 10px cyan'
+          }} />
       </div>
 
       <div style={{ position: 'absolute', top: 20, left: 20, color: 'white', background: 'rgba(0,0,0,0.8)', padding: '10px', borderRadius: '5px', zIndex: 100 }}>
-        Andar: {ROWS - currentRow} / {ROWS} <br/>
+        Andar: {ROWS - currentRow} / {ROWS} <br />
         Nível do Grid: {currentTileData?.nivel}
       </div>
-      
+
     </div>
   );
 };
