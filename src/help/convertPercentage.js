@@ -1,4 +1,5 @@
 export const convertPercentage = (texto) => {
+  if (!texto) return 0;
   // Remove o símbolo e converte para número
   const valor = parseFloat(texto.replace(',', '.'));
 

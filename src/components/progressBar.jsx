@@ -1,4 +1,6 @@
-export const ProgressBar = ({ progressBarRef }) => (
+import { memo } from 'react';
+
+export const ProgressBar = memo(({ progressBarRef }) => (
   <div
     style={{
       position: "absolute",
@@ -10,7 +12,7 @@ export const ProgressBar = ({ progressBarRef }) => (
       background: "rgba(255,255,255,0.1)",
       borderRadius: "10px",
       border: "2px solid rgba(255,255,255,0.3)",
-      zIndex: 1000,
+      zIndex: 30,
     }}
   >
     <div
@@ -24,4 +26,4 @@ export const ProgressBar = ({ progressBarRef }) => (
       }}
     />
   </div>
-);
+));

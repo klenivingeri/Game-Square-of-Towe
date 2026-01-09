@@ -1,12 +1,16 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { createMatchMap } from './maps/map';
 import { convertPercentage } from './help/convertPercentage';
 import { ProgressBar } from './components/progressBar';
 import { Perfil } from './components/perfil';
+import { ModalArena } from './components/ModalArena';
+import { Arena } from './components/Arena';
 
 const App = () => {
   const [screen, setScreen] = useState({ width: window.innerWidth, height: window.innerHeight });
-  const gameMap = createMatchMap(0);
+  const [modalArenaOpen, setModalArenaOpen] = useState(false);
+  const [mapInfo, setMapInfo] = useState({});
+  const gameMap = useMemo(() => createMatchMap(0), []);
   const ROWS = gameMap.length;
   const COLS = gameMap[0].length;
 
@@ -16,6 +20,9 @@ const App = () => {
   const mapHeight = ROWS * tileH;
 
   const [pos, setPos] = useState({ x: screen.width / 2, y: mapHeight - 50 });
+  const currentPosRef = useRef({ x: screen.width / 2, y: mapHeight - 50 });
+  const reqRef = useRef(null);
+  const [isMoving, setIsMoving] = useState(false);
 
   // --- NOVOS ESTADOS E REFS ---
   const progressBarRef = useRef(null);
@@ -28,6 +35,30 @@ const App = () => {
   const [inventory, setInventory] = useState([]);
   const [stats, setStats] = useState({ money: 0 });
   const lastPos = useRef({ x: pos.x, y: pos.y });
+
+  // --- ESTADO DO JOGADOR (ATRIBUTOS E EQUIPAMENTOS) ---
+  const [player, setPlayer] = useState({
+    attributes: {
+      level: 1,
+      xp: 0,
+      maxXp: 100,
+      hp: 100,
+      maxHp: 100,
+      attack: 10,      // Dano base
+      speed: 3,        // Velocidade de enchimento da barra
+      defense: 2,      // Redução de dano
+      critChance: 10,  // Porcentagem (0-100)
+    },
+    equipment: {
+      head: null,   // Cabeça
+      chest: null,  // Peito
+      arms: null,   // Braço
+      pants: null,  // Calça
+      boots: null,  // Botas
+      weapon: null, // Espada
+      shield: null  // Escudo
+    }
+  });
 
   // --- REFERÊNCIAS PARA O LERP ---
   const [scrollY, setScrollY] = useState(0);
@@ -48,13 +79,17 @@ const App = () => {
     const nivel = gameMap[cRow]?.[cCol]?.nivel || 1;
     const stringLevel = convertPercentage(progressBarRef.current.style.width);
     const chance = Math.random();
+    
 
     if (chance < 0.2) { // 20% de chance de achar algo
+      setMapInfo({ nivel, stringLevel });
       alert(`✨ Você encontrou um DROP de nível ${nivel}!, ${stringLevel}`);
       setStats(s => ({ ...s, money: s.money + (10 * nivel) }));
     } else {
+      setMapInfo({ nivel, stringLevel });
       // Aqui entrará a sua lógica de batalha
-      alert(`Iniciando batalha com Mob nível: ${nivel}, ${stringLevel}!`);
+      setModalArenaOpen(true);
+      
       setStats(s => ({ ...s }));
     }
 
@@ -62,15 +97,11 @@ const App = () => {
 
   useEffect(() => {
     const update = () => {
-      // 1. Atualizar Posição do Personagem
-      setPos(prev => {
-        let newX = prev.x;
-        let newY = prev.y;
-        const speed = 6;
+      const speed = 6;
+      let dx = 0;
+      let dy = 0;
 
-        let dx = 0;
-        let dy = 0;
-
+      if (!modalArenaOpen) {
         if (keys.current['ArrowUp'] || keys.current['w']) dy -= speed;
         if (keys.current['ArrowDown'] || keys.current['s']) dy += speed;
         if (keys.current['ArrowLeft'] || keys.current['a']) dx -= speed;
@@ -86,56 +117,68 @@ const App = () => {
             dy += Math.sin(angle) * speed;
           }
         }
+      }
 
-        newX += dx;
-        newY += dy;
+      const moving = dx !== 0 || dy !== 0;
+      setIsMoving(prev => (prev !== moving ? moving : prev));
 
-        newX = Math.max(0, Math.min(newX, screen.width - playerSize));
-        newY = Math.max(0, Math.min(newY, mapHeight - playerSize));
+      // Limpeza de partículas expiradas (substitui o setTimeout)
+      setParticles(prev => {
+        const now = Date.now();
+        const filtered = prev.filter(p => now - p.createdAt < 500);
+        return filtered.length !== prev.length ? filtered : prev;
+      });
 
-        // --- LÓGICA DE PARTÍCULAS (Rastro) ---
-        const distParticle = Math.sqrt(
-          Math.pow(newX - lastParticlePos.current.x, 2) + 
-          Math.pow(newY - lastParticlePos.current.y, 2)
-        );
+      // 1. Atualizar Posição do Personagem
+      const prevPos = currentPosRef.current;
+      let newX = prevPos.x + dx;
+      let newY = prevPos.y + dy;
 
-        if (distParticle > 20) { // Cria uma partícula a cada 20px percorridos
-          const id = Date.now() + Math.random();
-          setParticles(prev => [...prev, { id, x: newX, y: newY }]);
-          lastParticlePos.current = { x: newX, y: newY };
-          setTimeout(() => setParticles(prev => prev.filter(p => p.id !== id)), 500);
+      newX = Math.max(0, Math.min(newX, screen.width - playerSize));
+      newY = Math.max(0, Math.min(newY, mapHeight - playerSize));
+
+      currentPosRef.current = { x: newX, y: newY };
+      setPos({ x: newX, y: newY });
+
+      // --- LÓGICA DE PARTÍCULAS (Rastro) ---
+      const distParticle = Math.sqrt(
+        Math.pow(newX - lastParticlePos.current.x, 2) +
+        Math.pow(newY - lastParticlePos.current.y, 2)
+      );
+
+      if (distParticle > 20) { // Cria uma partícula a cada 20px percorridos
+        const id = Date.now() + Math.random();
+        setParticles(prev => [...prev, { id, x: newX, y: newY, createdAt: Date.now() }]);
+        lastParticlePos.current = { x: newX, y: newY };
+      }
+
+      // --- CÁLCULO DE PROGRESSO ---
+      const distanceMoved = Math.sqrt(
+        Math.pow(newX - lastPos.current.x, 2) +
+        Math.pow(newY - lastPos.current.y, 2)
+      );
+
+      if (distanceMoved > 0.5) { // Se ele realmente se moveu
+        // Lógica de Distância Dinâmica
+
+        // Inicializa o trigger na primeira vez
+        if (triggerDistanceRef.current === 0) {
+          triggerDistanceRef.current = mapHeight;
         }
 
-        // --- CÁLCULO DE PROGRESSO ---
-        const distanceMoved = Math.sqrt(
-          Math.pow(newX - lastPos.current.x, 2) +
-          Math.pow(newY - lastPos.current.y, 2)
-        );
-
-        if (distanceMoved > 0.5) { // Se ele realmente se moveu
-          // Lógica de Distância Dinâmica
-          const maxDimension = Math.max(screen.width, screen.height);
-
-          // Inicializa o trigger na primeira vez
-          if (triggerDistanceRef.current === 0) {
-            triggerDistanceRef.current = maxDimension * (0.25 + Math.random() * 0.75);
+        const currentBarLevel = progressBarRef.current ? convertPercentage(progressBarRef.current.style.width) : 0;
+        // Chance ajustada (0.7%) pois agora só roda quando a barra está acima do nível 3
+        if (currentBarLevel >= 3 && Math.random() < 0.005) {
+          handleEvent(newX, newY);
+          totalWalkedRef.current = 0;
+          triggerDistanceRef.current = mapHeight;
+          if (progressBarRef.current) {
+            progressBarRef.current.style.width = '0%';
+            progressBarRef.current.style.background = 'cyan';
+            progressBarRef.current.style.boxShadow = '0 0 10px cyan';
           }
-
-          const currentBarLevel = progressBarRef.current ? convertPercentage(progressBarRef.current.style.width) : 0;
-          // Chance ajustada (0.7%) pois agora só roda quando a barra está acima do nível 3
-          if (currentBarLevel >= 3 && Math.random() < 0.007) {
-            handleEvent(newX, newY);
-            totalWalkedRef.current = 0;
-            triggerDistanceRef.current = maxDimension * (0.25 + Math.random() * 0.75);
-            if (progressBarRef.current) {
-              progressBarRef.current.style.width = '0%';
-              progressBarRef.current.style.background = 'cyan';
-              progressBarRef.current.style.boxShadow = '0 0 10px cyan';
-            }
-            lastPos.current = { x: newX, y: newY };
-            return { x: newX, y: newY };
-          }
-
+          lastPos.current = { x: newX, y: newY };
+        } else {
           totalWalkedRef.current += distanceMoved;
 
           // O evento só dispara quando atinge o trigger real (que é maior que o visual)
@@ -144,7 +187,7 @@ const App = () => {
 
             // Reseta e sorteia novo trigger para o próximo ciclo
             totalWalkedRef.current = 0;
-            triggerDistanceRef.current = maxDimension * (0.25 + Math.random() * 0.75);
+            triggerDistanceRef.current = mapHeight;
 
             if (progressBarRef.current) {
               progressBarRef.current.style.width = '0%';
@@ -153,59 +196,57 @@ const App = () => {
           }
           lastPos.current = { x: newX, y: newY };
         }
+      }
 
-        // ATUALIZAÇÃO VISUAL DA BARRA (Executa todo frame, mesmo parado)
-        if (triggerDistanceRef.current > 0) {
-          // A barra enche visualmente em 70% do caminho total (Janela de Tensão)
-          const barFullLimit = triggerDistanceRef.current * 0.90;
-          const visualProgress = Math.min((totalWalkedRef.current / barFullLimit) * 100, 100);
+      // ATUALIZAÇÃO VISUAL DA BARRA (Executa todo frame, mesmo parado)
+      if (triggerDistanceRef.current > 0) {
+        // A barra enche visualmente em 70% do caminho total (Janela de Tensão)
+        const barFullLimit = triggerDistanceRef.current * 0.90;
+        const visualProgress = Math.min((totalWalkedRef.current / barFullLimit) * 100, 100);
 
-          // EFEITOS DE TREMOR (SHAKE)
-          // 1. Oscilação Horizontal: Gera um número aleatório entre -1.5 e 1.5 para somar à largura
-          const shakeX = (Math.random() - 0.5) * 1;
-          
-          // 2. Oscilação Vertical: Suave em 70% (2) e Forte em 85% (6)
-          const shakeIntensity = visualProgress >= 85 ? 6 : (visualProgress >= 70 ? 2 : 0);
-          const shakeY = (Math.random() - 0.5) * shakeIntensity;
+        // EFEITOS DE TREMOR (SHAKE)
+        // 1. Oscilação Horizontal: Gera um número aleatório entre -1.5 e 1.5 para somar à largura
+        const shakeX = (Math.random() - 0.5) * 1;
 
-          // Lógica de Cores baseada na porcentagem
-          let barColor = 'cyan';
-          if (visualProgress >= 85) {
-            barColor = '#ff0000'; // Vermelho Escuro
-          } else if (visualProgress >= 70) {
-            barColor = '#ff4d4d'; // Vermelho
-          }
+        // 2. Oscilação Vertical: Suave em 70% (2) e Forte em 85% (6)
+        const shakeIntensity = visualProgress >= 85 ? 6 : (visualProgress >= 70 ? 2 : 0);
+        const shakeY = (Math.random() - 0.5) * shakeIntensity;
 
-          if (progressBarRef.current) {
-            // Aplica a largura com o tremor (Math.max garante que não fique negativo)
-            progressBarRef.current.style.width = `${Math.max(0, visualProgress + shakeX)}%`;
-            // Aplica a cor calculada e sombra
-            progressBarRef.current.style.background = barColor;
-            progressBarRef.current.style.boxShadow = `0 0 ${visualProgress >= 70 ? '10px' : '5px'} ${barColor}`;
-            // Aplica o pulo vertical para dar a impressão de sair da borda
-            progressBarRef.current.style.transform = `translateY(${shakeY}px)`;
-          }
+        // Lógica de Cores baseada na porcentagem
+        let barColor = 'cyan';
+        if (visualProgress >= 85) {
+          barColor = '#ff0000'; // Vermelho Escuro
+        } else if (visualProgress >= 70) {
+          barColor = '#ff4d4d'; // Vermelho
         }
 
-        // 2. CÁLCULO DO LERP (Câmera Suave) dentro do setPos para pegar o newY atualizado
-        let targetScroll = newY - screen.height / 2;
-        const maxScroll = mapHeight - screen.height;
-        targetScroll = Math.max(0, Math.min(targetScroll, maxScroll));
+        if (progressBarRef.current) {
+          // Aplica a largura com o tremor (Math.max garante que não fique negativo)
+          progressBarRef.current.style.width = `${Math.max(0, visualProgress + shakeX)}%`;
+          // Aplica a cor calculada e sombra
+          progressBarRef.current.style.background = barColor;
+          progressBarRef.current.style.boxShadow = `0 0 ${visualProgress >= 70 ? '10px' : '5px'} ${barColor}`;
+          // Aplica o pulo vertical para dar a impressão de sair da borda
+          progressBarRef.current.style.transform = `translateY(${shakeY}px)`;
+        }
+      }
 
-        // A fórmula: posição_atual + (destino - posição_atual) * suavidade
-        // 0.1 cria o "delay" suave. Se quiser mais rápido, use 0.15. Mais lento, 0.05.
-        scrollRef.current = scrollRef.current + (targetScroll - scrollRef.current) * 0.1;
+      // 2. CÁLCULO DO LERP (Câmera Suave)
+      let targetScroll = newY - screen.height / 2;
+      const maxScroll = mapHeight - screen.height;
+      targetScroll = Math.max(0, Math.min(targetScroll, maxScroll));
 
-        // Sincroniza o estado visual com o cálculo matemático
-        setScrollY(scrollRef.current);
+      // A fórmula: posição_atual + (destino - posição_atual) * suavidade
+      // 0.1 cria o "delay" suave. Se quiser mais rápido, use 0.15. Mais lento, 0.05.
+      scrollRef.current = scrollRef.current + (targetScroll - scrollRef.current) * 0.05;
 
-        return { x: newX, y: newY };
-      });
+      // Sincroniza o estado visual com o cálculo matemático
+      setScrollY(scrollRef.current);
 
-      requestAnimationFrame(update);
+      reqRef.current = requestAnimationFrame(update);
     };
 
-    const animId = requestAnimationFrame(update);
+    reqRef.current = requestAnimationFrame(update);
     const handleKey = (e) => keys.current[e.key] = e.type === 'keydown';
     window.addEventListener('keydown', handleKey);
     window.addEventListener('keyup', handleKey);
@@ -213,9 +254,9 @@ const App = () => {
     return () => {
       window.removeEventListener('keydown', handleKey);
       window.removeEventListener('keyup', handleKey);
-      cancelAnimationFrame(animId);
+      cancelAnimationFrame(reqRef.current);
     };
-  }, [screen, mapHeight, playerSize]);
+  }, [screen, mapHeight, playerSize, modalArenaOpen]);
 
   // Detecção de Grid
   const centerX = pos.x + (playerSize / 2);
@@ -267,6 +308,11 @@ const App = () => {
     touchRef.current.moveY = 0;
   };
 
+  // Otimização: Função estável para o Modal não re-renderizar à toa
+  const handleCloseArena = useCallback(() => {
+    setModalArenaOpen(false);
+  }, []);
+
   return (
     <div 
       onTouchStart={handleTouchStart}
@@ -287,6 +333,13 @@ const App = () => {
         @keyframes fadeOut {
           from { opacity: 1; transform: scale(1); }
           to { opacity: 0; transform: scale(0); }
+        }
+        @keyframes waddle {
+          0% { transform: rotate(0deg) translateX(0); }
+          25% { transform: rotate(-3deg)}
+          50% { transform: rotate(0deg) translateX(0); }
+          75% { transform: rotate(3deg) }
+          100% { transform: rotate(0deg) translateX(0); }
         }
       `}</style>
 
@@ -326,11 +379,21 @@ const App = () => {
           background: 'white',
           zIndex: 15,
           boxShadow: '0 0 15px cyan',
+          animation: isMoving ? 'waddle 0.2s infinite' : 'none',
         }} />
       </div>
         {/* HUD */}
         <ProgressBar progressBarRef={progressBarRef} />
         <Perfil ROWS={ROWS} currentRow={currentRow} currentTileData={currentTileData} />
+        <ModalArena isOpen={modalArenaOpen} onClose={handleCloseArena} >
+          {`Iniciando batalha com Mob nível: ${mapInfo.nivel}, ${mapInfo.stringLevel}!`}
+          <Arena 
+            currentTileData={mapInfo}
+            player={player}
+            setPlayer={setPlayer}
+          />
+
+        </ModalArena>
 
 
     </div>
