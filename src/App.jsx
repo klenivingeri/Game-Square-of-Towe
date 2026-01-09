@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { createMatchMap } from './maps/map';
 import { convertPercentage } from './help/convertPercentage';
+import { ProgressBar } from './components/progressBar';
+import { Perfil } from './components/perfil';
 
 const App = () => {
   const [screen, setScreen] = useState({ width: window.innerWidth, height: window.innerHeight });
@@ -19,6 +21,7 @@ const App = () => {
   const progressBarRef = useRef(null);
   const totalWalkedRef = useRef(0);
   const triggerDistanceRef = useRef(0);
+  const touchRef = useRef({ startX: 0, startY: 0, moveX: 0, moveY: 0, active: false });
 
   const [inventory, setInventory] = useState([]);
   const [stats, setStats] = useState({ money: 0 });
@@ -33,6 +36,7 @@ const App = () => {
   const handleEvent = (x, y) => {
     // CORREÇÃO 2: Limpa os comandos para o personagem parar de andar ao abrir o alerta
     keys.current = {};
+    touchRef.current = { startX: 0, startY: 0, moveX: 0, moveY: 0, active: false };
 
     // CORREÇÃO: Calcula o nível baseando-se na posição exata do evento (x, y)
     const cx = x + (playerSize / 2);
@@ -62,10 +66,27 @@ const App = () => {
         let newY = prev.y;
         const speed = 6;
 
-        if (keys.current['ArrowUp'] || keys.current['w']) newY -= speed;
-        if (keys.current['ArrowDown'] || keys.current['s']) newY += speed;
-        if (keys.current['ArrowLeft'] || keys.current['a']) newX -= speed;
-        if (keys.current['ArrowRight'] || keys.current['d']) newX += speed;
+        let dx = 0;
+        let dy = 0;
+
+        if (keys.current['ArrowUp'] || keys.current['w']) dy -= speed;
+        if (keys.current['ArrowDown'] || keys.current['s']) dy += speed;
+        if (keys.current['ArrowLeft'] || keys.current['a']) dx -= speed;
+        if (keys.current['ArrowRight'] || keys.current['d']) dx += speed;
+
+        // Lógica de Toque (Joystick Virtual)
+        if (touchRef.current.active) {
+          const { moveX, moveY } = touchRef.current;
+          const distance = Math.sqrt(moveX * moveX + moveY * moveY);
+          if (distance > 10) { // Zona morta para evitar movimentos acidentais
+            const angle = Math.atan2(moveY, moveX);
+            dx += Math.cos(angle) * speed;
+            dy += Math.sin(angle) * speed;
+          }
+        }
+
+        newX += dx;
+        newY += dy;
 
         newX = Math.max(0, Math.min(newX, screen.width - playerSize));
         newY = Math.max(0, Math.min(newY, mapHeight - playerSize));
@@ -210,8 +231,33 @@ const App = () => {
     )));
   }, [gameMap, tileW, tileH]);
 
+  // --- HANDLERS DE TOQUE ---
+  const handleTouchStart = (e) => {
+    const touch = e.touches[0];
+    touchRef.current.startX = touch.clientX;
+    touchRef.current.startY = touch.clientY;
+    touchRef.current.active = true;
+  };
+
+  const handleTouchMove = (e) => {
+    if (!touchRef.current.active) return;
+    const touch = e.touches[0];
+    touchRef.current.moveX = touch.clientX - touchRef.current.startX;
+    touchRef.current.moveY = touch.clientY - touchRef.current.startY;
+  };
+
+  const handleTouchEnd = () => {
+    touchRef.current.active = false;
+    touchRef.current.moveX = 0;
+    touchRef.current.moveY = 0;
+  };
+
   return (
-    <div style={{
+    <div 
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      style={{
       position: 'fixed', // Fixa o container na tela, ignorando margens do body
       top: 0,
       left: 0,
@@ -229,6 +275,7 @@ const App = () => {
         left: 0,
         width: '100%',
         height: mapHeight,
+        zIndex: 0, // Garante que o mapa e o player fiquem em uma camada abaixo da UI
       }}>
 
         {mapTiles}
@@ -245,35 +292,10 @@ const App = () => {
           boxShadow: '0 0 15px cyan',
         }} />
       </div>
+        {/* HUD */}
+        <ProgressBar progressBarRef={progressBarRef} />
+        <Perfil ROWS={ROWS} currentRow={currentRow} currentTileData={currentTileData} />
 
-      {/* HUD da Barra de Progresso */}
-      <div style={{
-        position: 'absolute',
-        top: '20px',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        width: '40vw',
-        height: '12px',
-        background: 'rgba(255,255,255,0.1)',
-        borderRadius: '10px',
-        border: '2px solid rgba(255,255,255,0.3)',
-        zIndex: 1000
-      }}>
-        <div
-          ref={progressBarRef}
-          style={{
-            width: '0%',
-            height: '100%',
-            borderRadius: '8px', // Arredonda a barra interna para ficar bonito ao pular
-            background: 'cyan',
-            boxShadow: '0 0 10px cyan'
-          }} />
-      </div>
-
-      <div style={{ position: 'absolute', top: 20, left: 20, color: 'white', background: 'rgba(0,0,0,0.8)', padding: '10px', borderRadius: '5px', zIndex: 100 }}>
-        Andar: {ROWS - currentRow} / {ROWS} <br />
-        Nível do Grid: {currentTileData?.nivel}
-      </div>
 
     </div>
   );
