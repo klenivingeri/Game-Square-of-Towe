@@ -7,6 +7,9 @@ import { Perfil } from './components/perfil';
 import { ModalArena } from './components/ModalArena';
 import { Arena } from './components/Arena';
 import { Nav } from './components/Nav';
+import coinSound from './assets/sons/drop-coin.mp3';
+import jewelSound from './assets/sons/drop_jewel.mp3';
+import walkingSound from './assets/sons/sound-of-walking.mp3';
 
 export const Game = () => {
   const [screen, setScreen] = useState({ width: window.innerWidth, height: window.innerHeight });
@@ -27,6 +30,7 @@ export const Game = () => {
   const currentPosRef = useRef({ x: screen.width / 2, y: mapHeight - 50 });
   const reqRef = useRef(null);
   const [isMoving, setIsMoving] = useState(false);
+  const walkingAudioRef = useRef(new Audio(walkingSound));
 
   // --- NOVOS ESTADOS E REFS ---
   const progressBarRef = useRef(null);
@@ -71,7 +75,7 @@ export const Game = () => {
   });
 
   // --- REFERÊNCIAS PARA O LERP ---
-  const [scrollY, setScrollY] = useState(0);
+  const mapContainerRef = useRef(null);
   const scrollRef = useRef(0); // Valor interno da câmera para o cálculo matemático
   const keys = useRef({});
 
@@ -83,6 +87,21 @@ export const Game = () => {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Configuração do som de andar
+  useEffect(() => {
+    walkingAudioRef.current.loop = true;
+    walkingAudioRef.current.playbackRate = 2.5; // Acelerado para acompanhar a movimentação
+    return () => {
+      walkingAudioRef.current.pause();
+    };
+  }, []);
+
+  // Controle de Play/Pause do som de andar
+  useEffect(() => {
+    if (isMoving) walkingAudioRef.current.play().catch(() => {});
+    else walkingAudioRef.current.pause();
+  }, [isMoving]);
 
   // 3. FUNÇÃO DE EVENTOS (Drop ou Mobs)
   const handleEvent = (x, y) => {
@@ -115,12 +134,14 @@ export const Game = () => {
         setStats(s => ({ ...s, money: s.money + goldAmount }));
         msg = `+${goldAmount} Ouro`;
         icon = '💰';
+        new Audio(coinSound).play().catch(() => {});
       } else if (dropRoll < 0.60) {
         // 25% Joias
         const gemsAmount = Math.floor(Math.random() * 2) + 1; // 1 a 2 joias
         setStats(s => ({ ...s, gems: s.gems + gemsAmount }));
         msg = `+${gemsAmount} Joia(s)`;
         icon = '💎';
+        new Audio(jewelSound).play().catch(() => {});
       } else if (dropRoll < 0.90) {
         // 30% Consumível
         const types = [
@@ -200,8 +221,10 @@ export const Game = () => {
       newX = Math.max(0, Math.min(newX, screen.width - playerSize));
       newY = Math.max(0, Math.min(newY, mapHeight - playerSize));
 
-      currentPosRef.current = { x: newX, y: newY };
-      setPos({ x: newX, y: newY });
+      if (newX !== prevPos.x || newY !== prevPos.y) {
+        currentPosRef.current = { x: newX, y: newY };
+        setPos({ x: newX, y: newY });
+      }
 
       // --- LÓGICA DE PARTÍCULAS (Rastro) ---
       const distParticle = Math.sqrt(
@@ -301,8 +324,10 @@ export const Game = () => {
       // 0.1 cria o "delay" suave. Se quiser mais rápido, use 0.15. Mais lento, 0.05.
       scrollRef.current = scrollRef.current + (targetScroll - scrollRef.current) * 0.05;
 
-      // Sincroniza o estado visual com o cálculo matemático
-      setScrollY(scrollRef.current);
+      // OTIMIZAÇÃO: Manipulação direta do DOM (evita re-render do React a cada frame)
+      if (mapContainerRef.current) {
+        mapContainerRef.current.style.transform = `translate3d(0, -${scrollRef.current}px, 0)`;
+      }
 
       reqRef.current = requestAnimationFrame(update);
     };
@@ -455,13 +480,16 @@ export const Game = () => {
       `}</style>
 
       {/* CONTAINER DO MAPA */}
-      <div style={{
+      <div 
+        ref={mapContainerRef}
+        style={{
         position: 'absolute',
-        top: -scrollY,
+        top: 0,
         left: 0,
         width: '100%',
         height: mapHeight,
         zIndex: 0, // Garante que o mapa e o player fiquem em uma camada abaixo da UI
+        willChange: 'transform',
       }}>
 
         {mapTiles}

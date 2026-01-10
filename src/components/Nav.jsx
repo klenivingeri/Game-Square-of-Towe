@@ -53,7 +53,7 @@ export const Nav = memo(({ player, setPlayer, money, gems }) => {
       position: 'absolute',
       bottom: 20,
       right: 20,
-      zIndex: 100,
+      zIndex: 30,
       display: 'flex',
       justifyContent: 'flex-end', // Garante que o menu cresça para a esquerda
       alignItems: 'center'

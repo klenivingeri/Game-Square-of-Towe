@@ -1,4 +1,6 @@
 import { memo, useState, useEffect, useRef } from 'react';
+import punchSound from '../assets/sons/hit/classic-punch-impact-352711.mp3';
+import levelUpSound from '../assets/sons/cute-level-up-3-189853.mp3';
 
 const BONUS_POOL = [
   { id: 'heal_30', name: 'Poção Menor', description: 'Recupera 30% de Vida', type: 'heal', value: 0.3, color: '#2ecc71', icon: '❤' },
@@ -45,6 +47,14 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
   const [bonusModalOpen, setBonusModalOpen] = useState(false);
   const [bonusOptions, setBonusOptions] = useState([]);
   const [bonusFocusIndex, setBonusFocusIndex] = useState(0);
+
+  // OTIMIZAÇÃO: Refs para áudio para evitar criar 'new Audio()' a cada frame/hit
+  const hitAudioRef = useRef(new Audio(punchSound));
+  const levelUpAudioRef = useRef(new Audio(levelUpSound));
+  useEffect(() => {
+    hitAudioRef.current.volume = 0.5;
+    levelUpAudioRef.current.volume = 0.5;
+  }, []);
 
   // Ref para acessar o estado atual do player dentro do loop sem recriar o loop
   const playerRef = useRef(player);
@@ -230,6 +240,11 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
 
           activeMob.hp -= damage;
           activeMob.hit = 5; // Pisca branco por 5 frames
+
+          // Tocar som de impacto
+          hitAudioRef.current.currentTime = 0;
+          hitAudioRef.current.play().catch(() => {});
+
           state.playerAttack = 0;
           changed = true;
         }
@@ -254,6 +269,11 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
 
             state.playerHp -= mobDamage;
             state.playerHit = 5; // Pisca branco por 5 frames
+
+            // Tocar som de impacto no player
+            hitAudioRef.current.currentTime = 0;
+            hitAudioRef.current.play().catch(() => {});
+
             activeMob.attack = 0;
             changed = true;
           }
@@ -305,6 +325,11 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
               // Atualiza o estado local da batalha para refletir a cura imediatamente
               state.playerHp = attr.maxHp;
               state.playerMaxHp = attr.maxHp;
+
+              // Tocar som de Level Up
+              levelUpAudioRef.current.currentTime = 0;
+              levelUpAudioRef.current.play().catch(() => {});
+
               alert(`LEVEL UP! Você alcançou o nível ${attr.level}!`);
             }
 
