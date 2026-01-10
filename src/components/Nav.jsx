@@ -38,7 +38,7 @@ const icons = {
   )
 };
 
-export const Nav = memo(({ ROWS, currentRow, currentTileData, player, setPlayer, money }) => {
+export const Nav = memo(({ ROWS, currentRow, currentTileData, player, setPlayer, money, gems }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [activeModal, setActiveModal] = useState(null); // 'inventory', 'shop', 'quest', 'attributes'
 
@@ -130,7 +130,7 @@ export const Nav = memo(({ ROWS, currentRow, currentTileData, player, setPlayer,
       {/* Modal Reutilizável */}
       <ModalArena isOpen={!!activeModal} onClose={handleCloseModal} showX={true}>
         {activeModal === 'inventory' && (
-          <Inventory player={player} setPlayer={setPlayer} />
+          <Inventory player={player} setPlayer={setPlayer} gems={gems} />
         )}
         {activeModal === 'shop' && (
           <Shop money={money} />

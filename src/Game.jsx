@@ -11,6 +11,8 @@ import { Nav } from './components/Nav';
 export const Game = () => {
   const [screen, setScreen] = useState({ width: window.innerWidth, height: window.innerHeight });
   const [modalArenaOpen, setModalArenaOpen] = useState(false);
+  const [modalDropOpen, setModalDropOpen] = useState(false);
+  const [dropInfo, setDropInfo] = useState(null);
   const [mapInfo, setMapInfo] = useState({});
   const gameMap = useMemo(() => createMatchMap(0), []);
   const ROWS = gameMap.length;
@@ -35,8 +37,10 @@ export const Game = () => {
   const lastParticlePos = useRef({ x: pos.x, y: pos.y });
 
   const [inventory, setInventory] = useState([]);
-  const [stats, setStats] = useState({ money: 0 });
+  const [stats, setStats] = useState({ money: 0, gems: 0 });
   const lastPos = useRef({ x: pos.x, y: pos.y });
+  const [battleState, setBattleState] = useState('none'); // 'none', 'setup', 'fighting'
+  const [selectedItemIds, setSelectedItemIds] = useState([]);
 
   // --- ESTADO DO JOGADOR (ATRIBUTOS E EQUIPAMENTOS) ---
   const [player, setPlayer] = useState({
@@ -60,7 +64,9 @@ export const Game = () => {
       boots: null,  // Botas
       weapon: null, // Espada
       shield: null  // Escudo
-    }
+    },
+    items: [],      // Consumíveis
+    cosmetics: []   // Cosméticos
   });
 
   // --- REFERÊNCIAS PARA O LERP ---
@@ -98,12 +104,52 @@ export const Game = () => {
     const chance = Math.random();
 
     if (chance < 0.2) { // 20% de chance de achar algo
-      setMapInfo({ nivel, tension, mobHp, mobAtk });
-      alert(`✨ Você encontrou um DROP de nível ${nivel}!, ${tension }`);
-      setStats(s => ({ ...s, money: s.money + (10 * nivel) }));
+      const dropRoll = Math.random();
+      let msg = '';
+      let icon = '';
+
+      if (dropRoll < 0.35) {
+        // 35% Ouro
+        const goldAmount = 10 * nivel;
+        setStats(s => ({ ...s, money: s.money + goldAmount }));
+        msg = `+${goldAmount} Ouro`;
+        icon = '💰';
+      } else if (dropRoll < 0.60) {
+        // 25% Joias
+        const gemsAmount = Math.floor(Math.random() * 2) + 1; // 1 a 2 joias
+        setStats(s => ({ ...s, gems: s.gems + gemsAmount }));
+        msg = `+${gemsAmount} Joia(s)`;
+        icon = '💎';
+      } else if (dropRoll < 0.90) {
+        // 30% Consumível
+        const types = [
+          { id: `pot_hp_${Date.now()}`, name: 'Poção de Vida', type: 'heal', value: 30, icon: '❤', color: '#e74c3c' },
+          { id: `pot_sh_${Date.now()}`, name: 'Poção de Escudo', type: 'shield', value: 25, icon: '🛡', color: '#3498db' },
+          { id: `pot_str_${Date.now()}`, name: 'Poção de Força', type: 'damage', value: 5, icon: '⚔', color: '#f39c12' }
+        ];
+        const item = types[Math.floor(Math.random() * types.length)];
+        setPlayer(p => ({ ...p, items: [...(p.items || []), item] }));
+        msg = `Você encontrou: ${item.name}`;
+        icon = item.icon;
+      } else {
+        // 10% Cosmético
+        const cosmeticTypes = [
+          { id: `cosm_hat_${Date.now()}`, name: 'Cartola Elegante', icon: '🎩', color: '#9b59b6' },
+          { id: `cosm_glasses_${Date.now()}`, name: 'Óculos Escuros', icon: '🕶', color: '#34495e' },
+          { id: `cosm_crown_${Date.now()}`, name: 'Coroa Real', icon: '👑', color: '#f1c40f' }
+        ];
+        const item = cosmeticTypes[Math.floor(Math.random() * cosmeticTypes.length)];
+        setPlayer(p => ({ ...p, cosmetics: [...(p.cosmetics || []), item] }));
+        msg = `Cosmético Raro: ${item.name}`;
+        icon = item.icon;
+      }
+      setDropInfo({ msg, icon });
+      setModalDropOpen(true);
     } else {
       setMapInfo({ nivel, tension, mobHp, mobAtk });
       // Aqui entrará a sua lógica de batalha
+      setBattleState('setup');
+      setSelectedItemIds([]);
       setModalArenaOpen(true);
       
       setStats(s => ({ ...s }));
@@ -325,7 +371,19 @@ export const Game = () => {
   // Otimização: Função estável para o Modal não re-renderizar à toa
   const handleCloseArena = useCallback(() => {
     setModalArenaOpen(false);
+    setBattleState('none');
   }, []);
+
+  const toggleItemSelection = (itemId) => {
+    setSelectedItemIds(prev => {
+      if (prev.includes(itemId)) {
+        return prev.filter(id => id !== itemId);
+      } else {
+        if (prev.length >= 2) return prev;
+        return [...prev, itemId];
+      }
+    });
+  };
 
   return (
     <div 
@@ -398,7 +456,7 @@ export const Game = () => {
       </div>
         {/* HUD */}
         <ProgressBar progressBarRef={progressBarRef} />
-        <Perfil ROWS={ROWS} currentRow={currentRow} currentTileData={currentTileData} player={player} money={stats.money} />
+        <Perfil ROWS={ROWS} currentRow={currentRow} currentTileData={currentTileData} player={player} money={stats.money} gems={stats.gems} />
         
         {/* Botão Fullscreen */}
         <button
@@ -420,15 +478,69 @@ export const Game = () => {
         >
           ⛶
         </button>
-        <ModalArena isOpen={modalArenaOpen} onClose={handleCloseArena} >
-          {`Iniciando batalha com Mob nível: ${mapInfo.nivel}, ${mapInfo.tension }!`}
-          <Arena 
-            currentTileData={mapInfo}
-            player={player}
-            setPlayer={setPlayer}
-            setStats={setStats}
-            onClose={handleCloseArena}
-          />
+
+        {/* Modal de Drop (Mapa) */}
+        <ModalArena isOpen={modalDropOpen} onClose={() => setModalDropOpen(false)} showX={true}>
+          <div style={{ textAlign: 'center', padding: '20px' }}>
+            <div style={{ fontSize: '40px', marginBottom: '10px' }}>{dropInfo?.icon}</div>
+            <h2 style={{ color: 'cyan', margin: '0 0 10px 0' }}>Encontrado!</h2>
+            <p style={{ fontSize: '18px', color: 'white' }}>{dropInfo?.msg}</p>
+            <button 
+              onClick={() => setModalDropOpen(false)}
+              style={{ marginTop: '20px', padding: '8px 20px', background: '#3498db', border: 'none', borderRadius: '4px', color: 'white', cursor: 'pointer' }}>
+              Coletar
+            </button>
+          </div>
+        </ModalArena>
+
+        <ModalArena isOpen={modalArenaOpen} disableBackgroundClose onClose={handleCloseArena} >
+          {battleState === 'setup' && (
+            <div style={{ textAlign: 'center', padding: '10px' }}>
+              <h2 style={{ color: 'cyan', marginBottom: '10px' }}>Preparação</h2>
+              <p style={{ color: '#ccc', fontSize: '14px' }}>Selecione até 2 itens para a batalha:</p>
+              
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap', margin: '20px 0', minHeight: '60px' }}>
+                {player.items.length > 0 ? player.items.map((item) => {
+                  const isSelected = selectedItemIds.includes(item.id);
+                  return (
+                    <div 
+                      key={item.id} 
+                      onClick={() => toggleItemSelection(item.id)}
+                      style={{
+                        width: '50px', height: '50px',
+                        border: isSelected ? '2px solid cyan' : `1px solid ${item.color}`,
+                        borderRadius: '8px',
+                        background: isSelected ? 'rgba(0, 255, 255, 0.2)' : 'rgba(0,0,0,0.3)',
+                        display: 'flex', justifyContent: 'center', alignItems: 'center',
+                        fontSize: '24px', cursor: 'pointer',
+                        position: 'relative'
+                      }}
+                    >
+                      {item.icon}
+                      {isSelected && <div style={{ position: 'absolute', top: -5, right: -5, background: 'cyan', width: '15px', height: '15px', borderRadius: '50%', border: '1px solid black' }} />}
+                    </div>
+                  );
+                }) : <span style={{ color: '#666' }}>Nenhum item consumível.</span>}
+              </div>
+
+              <button 
+                onClick={() => setBattleState('fighting')}
+                style={{ padding: '10px 40px', background: '#e74c3c', color: 'white', border: 'none', borderRadius: '5px', fontSize: '18px', cursor: 'pointer', boxShadow: '0 0 10px #c0392b' }}>
+                LUTAR!
+              </button>
+            </div>
+          )}
+
+          {battleState === 'fighting' && (
+            <Arena 
+              currentTileData={mapInfo}
+              player={player}
+              setPlayer={setPlayer}
+              setStats={setStats}
+              onClose={handleCloseArena}
+              battleItems={player.items.filter(i => selectedItemIds.includes(i.id))}
+            />
+          )}
         </ModalArena>
         <Nav 
           ROWS={ROWS} 
@@ -437,6 +549,7 @@ export const Game = () => {
           player={player} 
           setPlayer={setPlayer}
           money={stats.money} 
+          gems={stats.gems}
         />
     </div>
   );

@@ -1,17 +1,17 @@
 import { memo, useState, useEffect, useRef } from 'react';
 
 const BONUS_POOL = [
-  { id: 'heal_30', name: 'Poção Menor', description: 'Recupera 30% de Vida', type: 'heal', value: 0.3, color: '#2ecc71' },
-  { id: 'heal_100', name: 'Poção Completa', description: 'Recupera 100% de Vida', type: 'heal', value: 1, color: '#27ae60' },
-  { id: 'shield_25', name: 'Escudo Básico', description: '+25 de Escudo', type: 'shield', value: 25, color: '#3498db' },
-  { id: 'shield_50', name: 'Escudo Reforçado', description: '+50 de Escudo', type: 'shield', value: 50, color: '#2980b9' },
-  { id: 'dmg_5', name: 'Afiador', description: '+5 de Dano (Batalha)', type: 'damage', value: 5, color: '#e74c3c' },
-  { id: 'dmg_15', name: 'Lâmina Sombria', description: '+15 de Dano (Batalha)', type: 'damage', value: 15, color: '#c0392b' },
-  { id: 'crit_10', name: 'Concentração', description: '+10% Crítico (Batalha)', type: 'crit', value: 10, color: '#f1c40f' },
-  { id: 'crit_25', name: 'Instinto Assassino', description: '+25% Crítico (Batalha)', type: 'crit', value: 25, color: '#f39c12' },
+  { id: 'heal_30', name: 'Poção Menor', description: 'Recupera 30% de Vida', type: 'heal', value: 0.3, color: '#2ecc71', icon: '❤' },
+  { id: 'heal_100', name: 'Poção Completa', description: 'Recupera 100% de Vida', type: 'heal', value: 1, color: '#27ae60', icon: '💖' },
+  { id: 'shield_25', name: 'Escudo Básico', description: '+25 de Escudo', type: 'shield', value: 25, color: '#3498db', icon: '🛡' },
+  { id: 'shield_50', name: 'Escudo Reforçado', description: '+50 de Escudo', type: 'shield', value: 50, color: '#2980b9', icon: '🛡' },
+  { id: 'dmg_5', name: 'Afiador', description: '+5 de Dano (Batalha)', type: 'damage', value: 5, color: '#e74c3c', icon: '⚔' },
+  { id: 'dmg_15', name: 'Lâmina Sombria', description: '+15 de Dano (Batalha)', type: 'damage', value: 15, color: '#c0392b', icon: '🗡' },
+  { id: 'crit_10', name: 'Concentração', description: '+10% Crítico (Batalha)', type: 'crit', value: 10, color: '#f1c40f', icon: '🎯' },
+  { id: 'crit_25', name: 'Instinto Assassino', description: '+25% Crítico (Batalha)', type: 'crit', value: 25, color: '#f39c12', icon: '☠' },
 ];
 
-export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClose }) => {
+export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClose, battleItems }) => {
   // Configurações da Arena
   const PLAYER_SIZE = 50;
   const MOB_SIZE = 50;
@@ -35,7 +35,9 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
     paused: false,
     xpGained: 0,
     goldGained: 0,
-    result: null
+    gemsGained: 0,
+    result: null,
+    activeBonuses: []
   });
 
   // Estado para renderização visual
@@ -124,7 +126,9 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
       paused: false,
       xpGained: 0,
       goldGained: 0,
-      result: null
+      gemsGained: 0,
+      result: null,
+      activeBonuses: []
     };
     setRender({ ...gameState.current });
     setBonusModalOpen(false);
@@ -266,10 +270,16 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
         if (activeMob.type === 'enemy') {
           const xpGain = (currentTileData?.nivel || 1) * 10;
           const goldGain = (currentTileData?.nivel || 1) * 5;
+          
+          // 50% de chance de dropar Joia
+          const gemDrop = Math.random() < 0.5 ? 1 : 0;
 
           state.xpGained += xpGain;
           state.goldGained += goldGain;
-          if (setStats) setStats(s => ({ ...s, money: s.money + goldGain }));
+          state.gemsGained += gemDrop;
+
+          // Atualiza stats globais
+          if (setStats) setStats(s => ({ ...s, money: s.money + goldGain, gems: s.gems + gemDrop }));
 
           // Atualiza o estado global do player
           setPlayer(prev => {
@@ -340,10 +350,31 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
       state.tempCritBonus = (state.tempCritBonus || 0) + option.value;
     }
 
+    state.activeBonuses.push(option); // Adiciona à lista de bônus ativos
     state.currentMobIndex++; // Remove a caixa da frente
     state.paused = false; // Despausa o jogo
     setBonusModalOpen(false);
     setRender({ ...state, mobs: [...state.mobs] });
+  };
+
+  // Função para usar consumível do inventário
+  const handleUseConsumable = (item) => {
+    const state = gameState.current;
+    if (!state.active || state.paused) return;
+
+    if (item.type === 'heal') {
+      state.playerHp = Math.min(state.playerHp + item.value, state.playerMaxHp);
+    } else if (item.type === 'shield') {
+      state.playerShield += item.value;
+    } else if (item.type === 'damage') {
+      state.tempAttackBonus += item.value;
+    }
+
+    // Remove o item do inventário do player
+    setPlayer(prev => ({
+      ...prev,
+      items: prev.items.filter(i => i.id !== item.id)
+    }));
   };
 
   return (
@@ -507,6 +538,61 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
         background: '#666'
       }} />
 
+      {/* BARRA DE CONSUMÍVEIS (Lado Direito) */}
+      <div style={{
+        position: 'absolute',
+        right: '10px',
+        bottom: '20px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '10px',
+        zIndex: 20
+      }}>
+        {battleItems && battleItems.map((item) => (
+          <div 
+            key={item.id}
+            onClick={() => handleUseConsumable(item)}
+            title={item.name}
+            style={{
+              width: '40px', 
+              height: '40px', 
+              borderRadius: '50%', 
+              background: '#333', 
+              border: `2px solid ${item.color}`,
+              display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer', fontSize: '20px',
+              boxShadow: '0 2px 5px rgba(0,0,0,0.5)'
+            }}>
+            {item.icon}
+          </div>
+        ))}
+      </div>
+
+      {/* BÔNUS ATIVOS (Abaixo do chão, lado esquerdo, horizontal) */}
+      <div style={{
+        position: 'absolute',
+        bottom: '35px',
+        left: '10px',
+        display: 'flex',
+        flexDirection: 'row',
+        gap: '5px',
+        zIndex: 19
+      }}>
+        {render.activeBonuses && render.activeBonuses.map((bonus, i) => (
+          <div key={i} style={{
+            border: `1px solid ${bonus.color}`,
+            borderRadius: '4px',
+            padding: '2px 6px',
+            background: 'rgba(0,0,0,0.6)',
+            display: 'flex', alignItems: 'center', gap: '5px',
+            fontSize: '10px', color: 'white',
+            boxShadow: `0 0 5px ${bonus.color}`
+          }}>
+            <span style={{ fontSize: '14px' }}>{bonus.icon}</span>
+            <span>{bonus.name}</span>
+          </div>
+        ))}
+      </div>
+
       {/* MODAL DE BÔNUS (Interno da Arena) */}
       {bonusModalOpen && (
         <div style={{
@@ -595,6 +681,9 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
             <div>
               <span style={{ color: '#f1c40f' }}>Ouro Ganho:</span> <strong>+{render.goldGained}</strong>
             </div>
+            {render.gemsGained > 0 && <div>
+              <span style={{ color: '#3498db' }}>Joias Ganhas:</span> <strong>+{render.gemsGained}</strong>
+            </div>}
           </div>
 
           <button onClick={onClose} style={{ padding: '10px 30px', fontSize: '16px', background: '#3498db', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', marginTop: '10px', boxShadow: '0 4px 6px rgba(0,0,0,0.3)' }}>

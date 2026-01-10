@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Attributes } from './Attributes';
 
-export const Inventory = ({ player, setPlayer }) => {
+export const Inventory = ({ player, setPlayer, gems }) => {
   const { attributes, equipment } = player;
   const [tab, setTab] = useState('items'); // 'items' or 'cosmetics'
   
@@ -50,6 +50,11 @@ export const Inventory = ({ player, setPlayer }) => {
 
       {/* Coluna Direita: Inventário (Bag) */}
       <div style={{ background: 'rgba(0,0,0,0.3)', padding: '5px', borderRadius: '8px', flex: '1 1 150px', display: 'flex', flexDirection: 'column' }}>
+        
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '5px', color: '#3498db', fontSize: '12px', fontWeight: 'bold' }}>
+          💎 {gems || 0}
+        </div>
+
         <div style={{ display: 'flex', gap: '5px', marginBottom: '5px' }}>
           <button 
             onClick={() => setTab('items')}
@@ -64,9 +69,21 @@ export const Inventory = ({ player, setPlayer }) => {
         </div>
         
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(35px, 1fr))', gap: '4px', overflowY: 'auto' }}>
-          {slots.map((_, i) => (
-            <div key={i} style={{ aspectRatio: '1/1', background: 'rgba(255,255,255,0.05)', border: '1px solid #444', borderRadius: '4px' }}></div>
-          ))}
+          {slots.map((_, i) => {
+            const list = tab === 'items' ? player.items : player.cosmetics;
+            const item = list && list[i];
+            return (
+              <div key={i} style={{ 
+                aspectRatio: '1/1', 
+                background: 'rgba(255,255,255,0.05)', 
+                border: item ? `1px solid ${item.color}` : '1px solid #444', 
+                borderRadius: '4px',
+                display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '18px'
+              }}>
+                {item ? item.icon : ''}
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

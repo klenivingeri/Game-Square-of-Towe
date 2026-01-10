@@ -1,6 +1,6 @@
 import { memo } from 'react';
 
-export const ModalArena = memo(({ isOpen, onClose, children, notCloseBg = false, showX = false }) => {
+export const ModalArena = memo(({ isOpen, onClose, children, notCloseBg = false, showX = false, disableBackgroundClose }) => {
   const onClosebg = notCloseBg ? () => { } : onClose;
 
   if (!isOpen) return null;
@@ -18,7 +18,7 @@ export const ModalArena = memo(({ isOpen, onClose, children, notCloseBg = false,
           backgroundColor: 'rgba(0, 0, 0, 0.5)',
           zIndex: 40,
         }}
-        onClick={onClosebg}
+        onClick={disableBackgroundClose ? () => { } : onClosebg}
       />
 
       {/* Modal Container */}
