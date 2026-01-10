@@ -11,7 +11,7 @@ const BONUS_POOL = [
   { id: 'crit_25', name: 'Instinto Assassino', description: '+25% Crítico (Batalha)', type: 'crit', value: 25, color: '#f39c12' },
 ];
 
-export const Arena = memo(({ currentTileData, player, setPlayer }) => {
+export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClose }) => {
   // Configurações da Arena
   const PLAYER_SIZE = 50;
   const MOB_SIZE = 50;
@@ -32,7 +32,10 @@ export const Arena = memo(({ currentTileData, player, setPlayer }) => {
     currentMobIndex: 0,
     active: true,
     combat: false,
-    paused: false
+    paused: false,
+    xpGained: 0,
+    goldGained: 0,
+    result: null
   });
 
   // Estado para renderização visual
@@ -118,7 +121,10 @@ export const Arena = memo(({ currentTileData, player, setPlayer }) => {
       currentMobIndex: 0,
       active: true,
       combat: false,
-      paused: false
+      paused: false,
+      xpGained: 0,
+      goldGained: 0,
+      result: null
     };
     setRender({ ...gameState.current });
     setBonusModalOpen(false);
@@ -150,8 +156,8 @@ export const Arena = memo(({ currentTileData, player, setPlayer }) => {
       // Se não tem mob ativo, venceu (todos morreram)
       if (!activeMob) {
         state.active = false;
+        state.result = 'win';
         setRender({ ...state });
-        alert("Vitória! Todos os mobs foram derrotados.");
         setPlayer(prev => ({
           ...prev,
           attributes: { ...prev.attributes, hp: prev.attributes.maxHp }
@@ -259,6 +265,11 @@ export const Arena = memo(({ currentTileData, player, setPlayer }) => {
         // --- SISTEMA DE XP E LEVEL UP ---
         if (activeMob.type === 'enemy') {
           const xpGain = (currentTileData?.nivel || 1) * 10;
+          const goldGain = (currentTileData?.nivel || 1) * 5;
+
+          state.xpGained += xpGain;
+          state.goldGained += goldGain;
+          if (setStats) setStats(s => ({ ...s, money: s.money + goldGain }));
 
           // Atualiza o estado global do player
           setPlayer(prev => {
@@ -292,8 +303,8 @@ export const Arena = memo(({ currentTileData, player, setPlayer }) => {
       } else if (state.playerHp <= 0) {
         state.playerHp = 0;
         state.active = false;
+        state.result = 'loss';
         changed = true;
-        alert("Derrota! Você morreu.");
         setPlayer(prev => ({
           ...prev,
           attributes: { ...prev.attributes, hp: prev.attributes.maxHp }
@@ -551,6 +562,44 @@ export const Arena = memo(({ currentTileData, player, setPlayer }) => {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* TELA DE RESULTADO (Vitória/Derrota) */}
+      {render.result && (
+        <div style={{
+          position: 'absolute',
+          top: 0, left: 0, width: '100%', height: '100%',
+          background: 'rgba(0,0,0,0.9)',
+          zIndex: 60,
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          color: 'white',
+          gap: '15px'
+        }}>
+          <h2 style={{ 
+            fontSize: '32px', 
+            color: render.result === 'win' ? '#2ecc71' : '#e74c3c',
+            margin: 0,
+            textShadow: '0 0 10px currentColor'
+          }}>
+            {render.result === 'win' ? 'VITÓRIA!' : 'DERROTA!'}
+          </h2>
+          
+          <div style={{ textAlign: 'center', fontSize: '18px' }}>
+            <div style={{ marginBottom: '5px' }}>
+              <span style={{ color: '#9b59b6' }}>XP Ganho:</span> <strong>+{render.xpGained}</strong>
+            </div>
+            <div>
+              <span style={{ color: '#f1c40f' }}>Ouro Ganho:</span> <strong>+{render.goldGained}</strong>
+            </div>
+          </div>
+
+          <button onClick={onClose} style={{ padding: '10px 30px', fontSize: '16px', background: '#3498db', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', marginTop: '10px', boxShadow: '0 4px 6px rgba(0,0,0,0.3)' }}>
+            Voltar
+          </button>
         </div>
       )}
     </div>
