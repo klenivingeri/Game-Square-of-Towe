@@ -6,6 +6,7 @@ import { ProgressBar } from './components/progressBar';
 import { Perfil } from './components/perfil';
 import { ModalArena } from './components/ModalArena';
 import { Arena } from './components/Arena';
+import { Nav } from './components/Nav';
 
 export const Game = () => {
   const [screen, setScreen] = useState({ width: window.innerWidth, height: window.innerHeight });
@@ -421,7 +422,6 @@ export const Game = () => {
         >
           ⛶
         </button>
-
         <ModalArena isOpen={modalArenaOpen} onClose={handleCloseArena} >
           {`Iniciando batalha com Mob nível: ${mapInfo.nivel}, ${mapInfo.tension }!`}
           <Arena 
@@ -431,10 +431,8 @@ export const Game = () => {
             setStats={setStats}
             onClose={handleCloseArena}
           />
-
         </ModalArena>
-
-
+        <Nav />
     </div>
   );
 };
