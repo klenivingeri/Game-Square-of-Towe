@@ -22,7 +22,6 @@ export const ProgressBar = memo(({ progressBarRef }) => (
         height: "100%",
         borderRadius: "8px", // Arredonda a barra interna para ficar bonito ao pular
         background: "cyan",
-        boxShadow: "0 0 10px cyan",
       }}
     />
   </div>

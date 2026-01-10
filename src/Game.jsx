@@ -49,7 +49,7 @@ export const Game = () => {
       attack: 10,      // Dano base
       speed: 3,        // Velocidade de enchimento da barra
       defense: 2,      // Redução de dano
-      shild: 2,
+      shield: 2,
       critChance: 10,  // Porcentagem (0-100)
     },
     equipment: {
@@ -191,7 +191,6 @@ export const Game = () => {
           if (progressBarRef.current) {
             progressBarRef.current.style.width = '0%';
             progressBarRef.current.style.background = 'cyan';
-            progressBarRef.current.style.boxShadow = '0 0 10px cyan';
           }
           lastPos.current = { x: newX, y: newY };
         } else {
@@ -239,9 +238,8 @@ export const Game = () => {
         if (progressBarRef.current) {
           // Aplica a largura com o tremor (Math.max garante que não fique negativo)
           progressBarRef.current.style.width = `${Math.max(0, visualProgress + shakeX)}%`;
-          // Aplica a cor calculada e sombra
+          // Aplica a cor calculada
           progressBarRef.current.style.background = barColor;
-          progressBarRef.current.style.boxShadow = `0 0 ${visualProgress >= 70 ? '10px' : '5px'} ${barColor}`;
           // Aplica o pulo vertical para dar a impressão de sair da borda
           progressBarRef.current.style.transform = `translateY(${shakeY}px)`;
         }
@@ -432,7 +430,14 @@ export const Game = () => {
             onClose={handleCloseArena}
           />
         </ModalArena>
-        <Nav />
+        <Nav 
+          ROWS={ROWS} 
+          currentRow={currentRow} 
+          currentTileData={currentTileData} 
+          player={player} 
+          setPlayer={setPlayer}
+          money={stats.money} 
+        />
     </div>
   );
 };

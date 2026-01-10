@@ -1,4 +1,9 @@
 import { memo, useState } from 'react';
+import { ModalArena } from './ModalArena';
+import { Inventory } from './Inventory';
+import { Shop } from './Shop';
+import { Quest } from './Quest';
+import { Attributes } from './Attributes';
 
 const icons = {
   menu: (
@@ -33,8 +38,15 @@ const icons = {
   )
 };
 
-export const Nav = memo(({ ROWS, currentRow, currentTileData, player, money }) => {
+export const Nav = memo(({ ROWS, currentRow, currentTileData, player, setPlayer, money }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [activeModal, setActiveModal] = useState(null); // 'inventory', 'shop', 'quest', 'attributes'
+
+  const handleOpenModal = (modalName) => {
+    setActiveModal(modalName);
+  };
+
+  const handleCloseModal = () => setActiveModal(null);
 
   return (
     <div style={{
@@ -108,12 +120,28 @@ export const Nav = memo(({ ROWS, currentRow, currentTileData, player, money }) =
 
           {/* Botões do Menu */}
           
-          <NavBtn icon={icons.shop} label="Loja" />
-          <NavBtn icon={icons.achievements} label="Conquistas" />
-          <NavBtn icon={icons.attributes} label="Atributos" />
-          <NavBtn icon={icons.inventory} label="Inventário" />
+          <NavBtn icon={icons.shop} label="Loja" onClick={() => handleOpenModal('shop')} />
+          <NavBtn icon={icons.achievements} label="Missões" onClick={() => handleOpenModal('quest')} />
+          <NavBtn icon={icons.attributes} label="Atributos" onClick={() => handleOpenModal('attributes')} />
+          <NavBtn icon={icons.inventory} label="Inventário" onClick={() => handleOpenModal('inventory')} />
         </div>
       )}
+
+      {/* Modal Reutilizável */}
+      <ModalArena isOpen={!!activeModal} onClose={handleCloseModal} showX={true}>
+        {activeModal === 'inventory' && (
+          <Inventory player={player} setPlayer={setPlayer} />
+        )}
+        {activeModal === 'shop' && (
+          <Shop money={money} />
+        )}
+        {activeModal === 'quest' && (
+          <Quest />
+        )}
+        {activeModal === 'attributes' && (
+          <Attributes attributes={player.attributes} />
+        )}
+      </ModalArena>
     </div>
   );
 });
