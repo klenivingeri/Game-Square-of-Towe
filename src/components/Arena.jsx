@@ -44,6 +44,7 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
   const [render, setRender] = useState(gameState.current);
   const [bonusModalOpen, setBonusModalOpen] = useState(false);
   const [bonusOptions, setBonusOptions] = useState([]);
+  const [bonusFocusIndex, setBonusFocusIndex] = useState(0);
 
   // Ref para acessar o estado atual do player dentro do loop sem recriar o loop
   const playerRef = useRef(player);
@@ -377,6 +378,37 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
     }));
   };
 
+  // Reset bonus focus
+  useEffect(() => {
+    if (bonusModalOpen) setBonusFocusIndex(0);
+  }, [bonusModalOpen]);
+
+  // Keyboard handler for Arena
+  useEffect(() => {
+    const handleArenaKey = (e) => {
+      if (bonusModalOpen) {
+        if (e.key === 'ArrowRight' || e.key === 'd') {
+          setBonusFocusIndex(prev => Math.min(prev + 1, bonusOptions.length - 1));
+        } else if (e.key === 'ArrowLeft' || e.key === 'a') {
+          setBonusFocusIndex(prev => Math.max(prev - 1, 0));
+        } else if (e.key === ' ' || e.key === 'Enter') {
+          e.preventDefault();
+          if (bonusOptions[bonusFocusIndex]) {
+            handleBonusChoice(bonusOptions[bonusFocusIndex]);
+          }
+        }
+      } else if (render.result) {
+        if (e.key === ' ' || e.key === 'Enter') {
+          e.preventDefault();
+          onClose();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleArenaKey);
+    return () => window.removeEventListener('keydown', handleArenaKey);
+  }, [bonusModalOpen, render.result, bonusFocusIndex, bonusOptions, onClose]);
+
   return (
     <div style={{
       width: '100%',
@@ -610,7 +642,7 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
           <h3 style={{ fontSize: '20px', textShadow: '0 0 10px black', margin: 0 }}>Escolha um Bônus!</h3>
 
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center', width: '100%' }}>
-            {bonusOptions.map((option) => (
+            {bonusOptions.map((option, index) => (
               <div
                 key={option.id}
                 onClick={() => handleBonusChoice(option)}
@@ -619,7 +651,7 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
                   maxWidth: '130px',
                   height: '160px',
                   background: '#333',
-                  border: `2px solid ${option.color}`,
+                  border: bonusFocusIndex === index ? '2px solid white' : `2px solid ${option.color}`,
                   borderRadius: '10px',
                   display: 'flex',
                   flexDirection: 'column',
@@ -627,11 +659,10 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
                   justifyContent: 'center',
                   padding: '5px',
                   cursor: 'pointer',
-                  boxShadow: `0 0 15px ${option.color}40`,
-                  transition: 'transform 0.1s'
+                  boxShadow: bonusFocusIndex === index ? `0 0 20px ${option.color}` : `0 0 15px ${option.color}40`,
+                  transition: 'transform 0.1s',
+                  transform: bonusFocusIndex === index ? 'scale(1.05)' : 'scale(1)'
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
-                onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
               >
                 <div style={{ fontSize: '24px', marginBottom: '5px' }}>
                   {option.type === 'heal' && '❤'}
@@ -686,8 +717,16 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
             </div>}
           </div>
 
-          <button onClick={onClose} style={{ padding: '10px 30px', fontSize: '16px', background: '#3498db', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', marginTop: '10px', boxShadow: '0 4px 6px rgba(0,0,0,0.3)' }}>
-            Voltar
+          <button onClick={onClose} style={{ 
+            padding: '10px 30px', 
+            fontSize: '16px', 
+            background: '#3498db', color: 'white', 
+            border: '2px solid white', 
+            borderRadius: '5px', cursor: 'pointer', marginTop: '10px', 
+            boxShadow: '0 0 15px white',
+            transform: 'scale(1.1)'
+          }}>
+            Voltar (Espaço)
           </button>
         </div>
       )}

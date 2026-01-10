@@ -38,14 +38,14 @@ const icons = {
   )
 };
 
-export const Nav = memo(({ ROWS, currentRow, currentTileData, player, setPlayer, money, gems }) => {
+export const Nav = memo(({ player, setPlayer, money, gems }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [activeModal, setActiveModal] = useState(null); // 'inventory', 'shop', 'quest', 'attributes'
 
   const handleOpenModal = (modalName) => {
     setActiveModal(modalName);
   };
-
+  console.log('Rendering Attributes with:');
   const handleCloseModal = () => setActiveModal(null);
 
   return (

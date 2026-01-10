@@ -41,6 +41,7 @@ export const Game = () => {
   const lastPos = useRef({ x: pos.x, y: pos.y });
   const [battleState, setBattleState] = useState('none'); // 'none', 'setup', 'fighting'
   const [selectedItemIds, setSelectedItemIds] = useState([]);
+  const [setupFocusIndex, setSetupFocusIndex] = useState(0);
 
   // --- ESTADO DO JOGADOR (ATRIBUTOS E EQUIPAMENTOS) ---
   const [player, setPlayer] = useState({
@@ -230,7 +231,7 @@ export const Game = () => {
 
         const currentBarLevel = progressBarRef.current ? convertPercentage(progressBarRef.current.style.width) : 0;
         // Chance ajustada (0.7%) pois agora só roda quando a barra está acima do nível 3
-        if (currentBarLevel >= 3 && Math.random() < 0.005) {
+        if (currentBarLevel >= 2 && Math.random() < 0.006) {
           handleEvent(newX, newY);
           totalWalkedRef.current = 0;
           triggerDistanceRef.current = mapHeight;
@@ -385,6 +386,44 @@ export const Game = () => {
     });
   };
 
+  // Reset focus when opening setup
+  useEffect(() => {
+    if (modalArenaOpen && battleState === 'setup') {
+      setSetupFocusIndex(0);
+    }
+  }, [modalArenaOpen, battleState]);
+
+  // Keyboard handler for Setup Phase
+  useEffect(() => {
+    if (!modalArenaOpen || battleState !== 'setup') return;
+
+    const handleSetupKey = (e) => {
+      const itemCount = player.items.length;
+      // Indices 0 to itemCount-1: Items
+      // Index itemCount: "LUTAR!" button
+
+      if (e.key === 'ArrowRight' || e.key === 'd') {
+        setSetupFocusIndex(prev => Math.min(prev + 1, itemCount));
+      } else if (e.key === 'ArrowLeft' || e.key === 'a') {
+        setSetupFocusIndex(prev => Math.max(prev - 1, 0));
+      } else if (e.key === 'ArrowDown' || e.key === 's') {
+        setSetupFocusIndex(itemCount);
+      } else if (e.key === 'ArrowUp' || e.key === 'w') {
+        if (itemCount > 0) setSetupFocusIndex(0);
+      } else if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        if (setupFocusIndex < itemCount) {
+          toggleItemSelection(player.items[setupFocusIndex].id);
+        } else {
+          setBattleState('fighting');
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleSetupKey);
+    return () => window.removeEventListener('keydown', handleSetupKey);
+  }, [modalArenaOpen, battleState, setupFocusIndex, player.items, toggleItemSelection]);
+
   return (
     <div 
       onTouchStart={handleTouchStart}
@@ -500,19 +539,22 @@ export const Game = () => {
               <p style={{ color: '#ccc', fontSize: '14px' }}>Selecione até 2 itens para a batalha:</p>
               
               <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap', margin: '20px 0', minHeight: '60px' }}>
-                {player.items.length > 0 ? player.items.map((item) => {
+                {player.items.length > 0 ? player.items.map((item, index) => {
                   const isSelected = selectedItemIds.includes(item.id);
+                  const isFocused = setupFocusIndex === index;
                   return (
                     <div 
                       key={item.id} 
                       onClick={() => toggleItemSelection(item.id)}
                       style={{
                         width: '50px', height: '50px',
-                        border: isSelected ? '2px solid cyan' : `1px solid ${item.color}`,
+                        border: isSelected ? '2px solid cyan' : (isFocused ? '2px solid white' : `1px solid ${item.color}`),
                         borderRadius: '8px',
                         background: isSelected ? 'rgba(0, 255, 255, 0.2)' : 'rgba(0,0,0,0.3)',
                         display: 'flex', justifyContent: 'center', alignItems: 'center',
                         fontSize: '24px', cursor: 'pointer',
+                        transform: isFocused ? 'scale(1.1)' : 'scale(1)',
+                        boxShadow: isFocused ? '0 0 15px rgba(255,255,255,0.5)' : 'none',
                         position: 'relative'
                       }}
                     >
@@ -525,8 +567,15 @@ export const Game = () => {
 
               <button 
                 onClick={() => setBattleState('fighting')}
-                style={{ padding: '10px 40px', background: '#e74c3c', color: 'white', border: 'none', borderRadius: '5px', fontSize: '18px', cursor: 'pointer', boxShadow: '0 0 10px #c0392b' }}>
-                LUTAR!
+                style={{ 
+                  padding: '10px 40px', 
+                  background: '#e74c3c', color: 'white', 
+                  border: setupFocusIndex === player.items.length ? '2px solid white' : 'none', 
+                  borderRadius: '5px', fontSize: '18px', cursor: 'pointer', 
+                  boxShadow: setupFocusIndex === player.items.length ? '0 0 20px white' : '0 0 10px #c0392b',
+                  transform: setupFocusIndex === player.items.length ? 'scale(1.1)' : 'scale(1)'
+                }}>
+                LUTAR! {setupFocusIndex === player.items.length && <span style={{fontSize: '12px'}}></span>}
               </button>
             </div>
           )}
