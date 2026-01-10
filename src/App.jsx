@@ -47,6 +47,7 @@ const App = () => {
       attack: 10,      // Dano base
       speed: 3,        // Velocidade de enchimento da barra
       defense: 2,      // Redução de dano
+      shild: 2,
       critChance: 10,  // Porcentagem (0-100)
     },
     equipment: {
@@ -77,16 +78,20 @@ const App = () => {
     const cCol = Math.floor(cx / tileW);
     const cRow = Math.floor(cy / tileH);
     const nivel = gameMap[cRow]?.[cCol]?.nivel || 1;
-    const stringLevel = convertPercentage(progressBarRef.current.style.width);
+    const tension = convertPercentage(progressBarRef.current.style.width);
+
+    // Regra de Vida e Força dos Mobs
+    const mobHp = 30 + (nivel * 10) + (tension * 5);
+    const mobAtk = 5 + (nivel * 2) + Math.floor(tension / 2);
+
     const chance = Math.random();
-    
 
     if (chance < 0.2) { // 20% de chance de achar algo
-      setMapInfo({ nivel, stringLevel });
-      alert(`✨ Você encontrou um DROP de nível ${nivel}!, ${stringLevel}`);
+      setMapInfo({ nivel, tension, mobHp, mobAtk });
+      alert(`✨ Você encontrou um DROP de nível ${nivel}!, ${tension }`);
       setStats(s => ({ ...s, money: s.money + (10 * nivel) }));
     } else {
-      setMapInfo({ nivel, stringLevel });
+      setMapInfo({ nivel, tension, mobHp, mobAtk });
       // Aqui entrará a sua lógica de batalha
       setModalArenaOpen(true);
       
@@ -384,9 +389,9 @@ const App = () => {
       </div>
         {/* HUD */}
         <ProgressBar progressBarRef={progressBarRef} />
-        <Perfil ROWS={ROWS} currentRow={currentRow} currentTileData={currentTileData} />
+        <Perfil ROWS={ROWS} currentRow={currentRow} currentTileData={currentTileData} player={player} money={stats.money} />
         <ModalArena isOpen={modalArenaOpen} onClose={handleCloseArena} >
-          {`Iniciando batalha com Mob nível: ${mapInfo.nivel}, ${mapInfo.stringLevel}!`}
+          {`Iniciando batalha com Mob nível: ${mapInfo.nivel}, ${mapInfo.tension }!`}
           <Arena 
             currentTileData={mapInfo}
             player={player}
