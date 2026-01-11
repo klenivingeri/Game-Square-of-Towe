@@ -1,6 +1,6 @@
 import { memo } from 'react';
 
-export const ModalArena = memo(({ isOpen, onClose, children, notCloseBg = false, showX = false, disableBackgroundClose }) => {
+export const ModalArena = memo(({ isOpen, onClose, children, notCloseBg = false, showX = false, disableBackgroundClose, compact = false }) => {
   const onClosebg = notCloseBg ? () => { } : onClose;
 
   if (!isOpen) return null;
@@ -44,8 +44,8 @@ export const ModalArena = memo(({ isOpen, onClose, children, notCloseBg = false,
             position: 'relative',
             boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
             borderRadius: '0.5rem',
-            width: '95%',
-            maxWidth: '700px',
+            width: compact ? 'auto' : '95%',
+            maxWidth: compact ? '90%' : '700px',
             pointerEvents: 'auto',
             color: 'white',
             padding: '1rem',

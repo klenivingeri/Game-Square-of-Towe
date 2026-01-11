@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { RARITIES, BASE_ITEMS } from './StateDriven/Items';
+import { RARITIES, BASE_ITEMS, ItemCard } from './StateDriven/Items';
 
 export const Shop = ({ money, gems, player, setPlayer, setStats }) => {
   const [shopItems, setShopItems] = useState([]);
@@ -215,34 +215,14 @@ export const Shop = ({ money, gems, player, setPlayer, setStats }) => {
       {/* Grade de Itens */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '10px', overflowY: 'auto', paddingRight: '5px' }}>
         {shopItems.map((item) => (
-          <div key={item.uniqueId} style={{
-            background: '#222',
-            border: `2px solid ${item.rarity.color}`,
-            borderRadius: '8px',
-            padding: '10px',
-            display: 'flex', flexDirection: 'column', alignItems: 'center',
-            position: 'relative',
-            boxShadow: `0 0 10px ${item.rarity.color}20`
-          }}>
+          <ItemCard key={item.uniqueId} item={item}>
             {/* Indicador de Qualidade (Variância) */}
             <div style={{
               position: 'absolute', top: 5, right: 5, fontSize: '10px',
-              color: item.variance > 1.1 ? '#2ecc71' : (item.variance < 0.9 ? '#e74c3c' : '#95a5a6')
+              color: item.variance > 1.1 ? '#2ecc71' : (item.variance < 0.9 ? '#e74c3c' : '#95a5a6'),
+              zIndex: 2
             }}>
               {item.variance > 1.1 ? '▲' : (item.variance < 0.9 ? '▼' : '-')}
-            </div>
-
-            <div style={{ fontSize: '32px', marginBottom: '5px' }}>{item.icon}</div>
-            <div style={{ color: item.rarity.color, fontWeight: 'bold', fontSize: '14px', textAlign: 'center', marginBottom: '2px' }}>{item.name}</div>
-            <div style={{ fontSize: '10px', color: '#888', marginBottom: '8px' }}>{item.rarity.name} - {item.type}</div>
-
-            <div style={{ width: '100%', background: 'rgba(0,0,0,0.5)', borderRadius: '4px', padding: '5px', marginBottom: '10px', flex: 1 }}>
-              {Object.entries(item.stats).map(([stat, value]) => (
-                <div key={stat} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', borderBottom: '1px solid #333' }}>
-                  <span style={{ color: '#aaa', textTransform: 'capitalize' }}>{stat}:</span>
-                  <span style={{ color: 'white' }}>{value}</span>
-                </div>
-              ))}
             </div>
 
             <button
@@ -252,11 +232,12 @@ export const Shop = ({ money, gems, player, setPlayer, setStats }) => {
                 background: money >= item.price ? '#f1c40f' : '#555',
                 color: money >= item.price ? 'black' : '#aaa',
                 border: 'none', borderRadius: '4px', cursor: money >= item.price ? 'pointer' : 'not-allowed',
-                fontWeight: 'bold', fontSize: '12px'
+                fontWeight: 'bold', fontSize: '12px',
+                marginTop: 'auto'
               }}>
               Comprar ({item.price} 💰)
             </button>
-          </div>
+          </ItemCard>
         ))}
       </div>
     </div>

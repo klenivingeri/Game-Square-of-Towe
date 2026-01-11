@@ -748,7 +748,7 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
       {/* BÔNUS ATIVOS (Abaixo do chão, lado esquerdo, horizontal) */}
       <div style={{
         position: 'absolute',
-        bottom: '35px',
+        bottom: '20px',
         left: '10px',
         display: 'flex',
         flexDirection: 'row',

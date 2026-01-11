@@ -10,11 +10,13 @@ import { Nav } from './components/Nav';
 import coinSound from './assets/sons/drop-coin.mp3';
 import jewelSound from './assets/sons/drop_jewel.mp3';
 import walkingSound from './assets/sons/sound-of-walking.mp3';
+import { BASE_CONSUMABLES, ItemCard, RARITIES } from './components/StateDriven/Items';
 
 export const Game = () => {
   const [screen, setScreen] = useState({ width: window.innerWidth, height: window.innerHeight });
   const [modalArenaOpen, setModalArenaOpen] = useState(false);
   const [modalDropOpen, setModalDropOpen] = useState(false);
+  const [activeNavModal, setActiveNavModal] = useState(null);
   const [dropInfo, setDropInfo] = useState(null);
   const [mapInfo, setMapInfo] = useState({});
   const gameMap = useMemo(() => createMatchMap(0), []);
@@ -41,7 +43,7 @@ export const Game = () => {
   const lastParticlePos = useRef({ x: pos.x, y: pos.y });
 
   const [inventory, setInventory] = useState([]);
-  const [stats, setStats] = useState({ money: 0, gems: 0 });
+  const [stats, setStats] = useState({ money: 1000, gems: 0 });
   const lastPos = useRef({ x: pos.x, y: pos.y });
   const [battleState, setBattleState] = useState('none'); // 'none', 'setup', 'fighting'
   const [selectedItemIds, setSelectedItemIds] = useState([]);
@@ -73,6 +75,11 @@ export const Game = () => {
     items: [],      // Consumíveis
     cosmetics: []   // Cosméticos
   });
+
+  // Filtra apenas itens consumíveis (que possuem a propriedade 'value') para a batalha
+  const consumables = useMemo(() => {
+    return player.items.filter(item => item.value !== undefined);
+  }, [player.items]);
 
   // --- REFERÊNCIAS PARA O LERP ---
   const mapContainerRef = useRef(null);
@@ -135,6 +142,7 @@ export const Game = () => {
         msg = `+${goldAmount} Ouro`;
         icon = '💰';
         new Audio(coinSound).play().catch(() => {});
+        setDropInfo({ msg, icon });
       } else if (dropRoll < 0.60) {
         // 25% Joias
         const gemsAmount = Math.floor(Math.random() * 2) + 1; // 1 a 2 joias
@@ -142,17 +150,27 @@ export const Game = () => {
         msg = `+${gemsAmount} Joia(s)`;
         icon = '💎';
         new Audio(jewelSound).play().catch(() => {});
+        setDropInfo({ msg, icon });
       } else if (dropRoll < 0.90) {
         // 30% Consumível
-        const types = [
-          { id: `pot_hp_${Date.now()}`, name: 'Poção de Vida', type: 'heal', value: 30, icon: '❤', color: '#e74c3c' },
-          { id: `pot_sh_${Date.now()}`, name: 'Poção de Escudo', type: 'shield', value: 25, icon: '🛡', color: '#3498db' },
-          { id: `pot_str_${Date.now()}`, name: 'Poção de Força', type: 'damage', value: 5, icon: '⚔', color: '#f39c12' }
-        ];
-        const item = types[Math.floor(Math.random() * types.length)];
-        setPlayer(p => ({ ...p, items: [...(p.items || []), item] }));
-        msg = `Você encontrou: ${item.name}`;
-        icon = item.icon;
+        const baseItem = BASE_CONSUMABLES[Math.floor(Math.random() * BASE_CONSUMABLES.length)];
+        const rarity = RARITIES[0]; // Comum
+
+        // Extrai valor para compatibilidade com Arena (que usa .value)
+        const statKey = Object.keys(baseItem.baseStats)[0];
+        const value = baseItem.baseStats[statKey];
+
+        const newItem = {
+          ...baseItem,
+          id: `${baseItem.id}_${Date.now()}`,
+          rarity,
+          stats: baseItem.baseStats,
+          value,
+          color: rarity.color
+        };
+
+        setPlayer(p => ({ ...p, items: [...(p.items || []), newItem] }));
+        setDropInfo({ type: 'item', data: newItem });
       } else {
         // 10% Cosmético
         const cosmeticTypes = [
@@ -164,8 +182,8 @@ export const Game = () => {
         setPlayer(p => ({ ...p, cosmetics: [...(p.cosmetics || []), item] }));
         msg = `Cosmético Raro: ${item.name}`;
         icon = item.icon;
+        setDropInfo({ msg, icon });
       }
-      setDropInfo({ msg, icon });
       setModalDropOpen(true);
     } else {
       setMapInfo({ nivel, tension, mobHp, mobAtk });
@@ -185,7 +203,7 @@ export const Game = () => {
       let dx = 0;
       let dy = 0;
 
-      if (!modalArenaOpen) {
+      if (!modalArenaOpen && !activeNavModal && !modalDropOpen) {
         if (keys.current['ArrowUp'] || keys.current['w']) dy -= speed;
         if (keys.current['ArrowDown'] || keys.current['s']) dy += speed;
         if (keys.current['ArrowLeft'] || keys.current['a']) dx -= speed;
@@ -342,7 +360,7 @@ export const Game = () => {
       window.removeEventListener('keyup', handleKey);
       cancelAnimationFrame(reqRef.current);
     };
-  }, [screen, mapHeight, playerSize, modalArenaOpen]);
+  }, [screen, mapHeight, playerSize, modalArenaOpen, activeNavModal, modalDropOpen]);
 
   // Detecção de Grid
   const centerX = pos.x + (playerSize / 2);
@@ -423,7 +441,7 @@ export const Game = () => {
     if (!modalArenaOpen || battleState !== 'setup') return;
 
     const handleSetupKey = (e) => {
-      const itemCount = player.items.length;
+      const itemCount = consumables.length;
       // Indices 0 to itemCount-1: Items
       // Index itemCount: "LUTAR!" button
 
@@ -438,7 +456,7 @@ export const Game = () => {
       } else if (e.key === ' ' || e.key === 'Enter') {
         e.preventDefault();
         if (setupFocusIndex < itemCount) {
-          toggleItemSelection(player.items[setupFocusIndex].id);
+          toggleItemSelection(consumables[setupFocusIndex].id);
         } else {
           setBattleState('fighting');
         }
@@ -447,7 +465,7 @@ export const Game = () => {
 
     window.addEventListener('keydown', handleSetupKey);
     return () => window.removeEventListener('keydown', handleSetupKey);
-  }, [modalArenaOpen, battleState, setupFocusIndex, player.items, toggleItemSelection]);
+  }, [modalArenaOpen, battleState, setupFocusIndex, consumables, toggleItemSelection]);
 
   return (
     <div 
@@ -547,14 +565,23 @@ export const Game = () => {
         </button>
 
         {/* Modal de Drop (Mapa) */}
-        <ModalArena isOpen={modalDropOpen} onClose={() => setModalDropOpen(false)} showX={true}>
-          <div style={{ textAlign: 'center', padding: '20px' }}>
-            <div style={{ fontSize: '40px', marginBottom: '10px' }}>{dropInfo?.icon}</div>
-            <h2 style={{ color: 'cyan', margin: '0 0 10px 0' }}>Encontrado!</h2>
-            <p style={{ fontSize: '18px', color: 'white' }}>{dropInfo?.msg}</p>
+        <ModalArena isOpen={modalDropOpen} onClose={() => setModalDropOpen(false)} showX={true} compact={dropInfo?.type === 'item'}>
+          <div style={{ textAlign: 'center', padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            {dropInfo?.type === 'item' && dropInfo.data ? (
+              <>
+                <h2 style={{ color: 'cyan', margin: '0 0 15px 0' }}>Item Encontrado!</h2>
+                <ItemCard item={dropInfo.data} />
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: '40px', marginBottom: '10px' }}>{dropInfo?.icon}</div>
+                <h2 style={{ color: 'cyan', margin: '0 0 10px 0' }}>Encontrado!</h2>
+                <p style={{ fontSize: '18px', color: 'white' }}>{dropInfo?.msg}</p>
+              </>
+            )}
             <button 
               onClick={() => setModalDropOpen(false)}
-              style={{ marginTop: '20px', padding: '8px 20px', background: '#3498db', border: 'none', borderRadius: '4px', color: 'white', cursor: 'pointer' }}>
+              style={{ marginTop: '20px', padding: '8px 20px', background: '#3498db', border: 'none', borderRadius: '4px', color: 'white', cursor: 'pointer', width: '100%' }}>
               Coletar
             </button>
           </div>
@@ -567,7 +594,7 @@ export const Game = () => {
               <p style={{ color: '#ccc', fontSize: '14px' }}>Selecione até 2 itens para a batalha:</p>
               
               <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap', margin: '20px 0', minHeight: '60px' }}>
-                {player.items.length > 0 ? player.items.map((item, index) => {
+                {consumables.length > 0 ? consumables.map((item, index) => {
                   const isSelected = selectedItemIds.includes(item.id);
                   const isFocused = setupFocusIndex === index;
                   return (
@@ -598,12 +625,12 @@ export const Game = () => {
                 style={{ 
                   padding: '10px 40px', 
                   background: '#e74c3c', color: 'white', 
-                  border: setupFocusIndex === player.items.length ? '2px solid white' : 'none', 
+                  border: setupFocusIndex === consumables.length ? '2px solid white' : 'none', 
                   borderRadius: '5px', fontSize: '18px', cursor: 'pointer', 
-                  boxShadow: setupFocusIndex === player.items.length ? '0 0 20px white' : '0 0 10px #c0392b',
-                  transform: setupFocusIndex === player.items.length ? 'scale(1.1)' : 'scale(1)'
+                  boxShadow: setupFocusIndex === consumables.length ? '0 0 20px white' : '0 0 10px #c0392b',
+                  transform: setupFocusIndex === consumables.length ? 'scale(1.1)' : 'scale(1)'
                 }}>
-                LUTAR! {setupFocusIndex === player.items.length && <span style={{fontSize: '12px'}}></span>}
+                LUTAR! {setupFocusIndex === consumables.length && <span style={{fontSize: '12px'}}></span>}
               </button>
             </div>
           )}
@@ -628,6 +655,8 @@ export const Game = () => {
           money={stats.money} 
           gems={stats.gems}
           setStats={setStats}
+          activeModal={activeNavModal}
+          setActiveModal={setActiveNavModal}
         />
     </div>
   );

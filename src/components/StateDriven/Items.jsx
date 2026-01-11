@@ -25,6 +25,70 @@ export const BASE_ITEMS = [
   { id: 'amulet', name: 'Amuleto Antigo', type: 'accessory', icon: '🧿', baseStats: { maxHp: 20, xp: 5 } },
 ];
 
+// Definição dos Itens Consumíveis
+export const BASE_CONSUMABLES = [
+  { id: 'potion_heal', name: 'Poção de Vida', type: 'heal', icon: '❤', baseStats: { heal: 50 } },
+  { id: 'potion_shield', name: 'Poção de Escudo', type: 'shield', icon: '🛡️', baseStats: { shield: 50 } },
+  { id: 'potion_crit', name: 'Poção de Crítico', type: 'crit', icon: '🎯', baseStats: { crit: 15 } },
+  { id: 'potion_speed', name: 'Poção de Velocidade', type: 'speed', icon: '⚡', baseStats: { speed: 5 } },
+  { id: 'potion_damage', name: 'Poção de Dano', type: 'damage', icon: '⚔️', baseStats: { damage: 10 } },
+];
+
+export const ItemCard = ({ item, style, onClick, children }) => {
+  const { rarity, stats } = item;
+  
+  return (
+    <div onClick={onClick} style={{
+      minWidth: '140px',
+      background: '#222',
+      border: `2px solid ${rarity?.color || '#444'}`,
+      borderRadius: '8px',
+      padding: '10px',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      boxShadow: `0 0 10px ${rarity?.color || '#444'}20`,
+      position: 'relative',
+      overflow: 'hidden',
+      cursor: onClick ? 'pointer' : 'default',
+      ...style
+    }}>
+      {/* Fundo com brilho sutil da cor da raridade */}
+      <div style={{
+        position: 'absolute',
+        top: '-50%',
+        left: '-50%',
+        width: '200%',
+        height: '200%',
+        background: `radial-gradient(circle, ${rarity?.color || '#444'}10 0%, transparent 70%)`,
+        pointerEvents: 'none'
+      }} />
+
+      <div style={{ fontSize: '32px', marginBottom: '5px', filter: `drop-shadow(0 0 5px ${rarity?.color || '#444'})`, zIndex: 1 }}>
+        {item.icon}
+      </div>
+      
+      <div style={{ color: rarity?.color || 'white', fontWeight: 'bold', fontSize: '14px', marginBottom: '2px', textAlign: 'center', zIndex: 1 }}>
+        {item.name}
+      </div>
+      
+      <div style={{ fontSize: '10px', color: '#888', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '1px', zIndex: 1 }}>
+        {rarity?.name} - {item.type}
+      </div>
+
+      <div style={{ width: '100%', background: 'rgba(0,0,0,0.5)', borderRadius: '4px', padding: '5px', marginBottom: '10px', flex: 1, zIndex: 1 }}>
+        {stats && Object.entries(stats).map(([stat, value]) => (
+          <div key={stat} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px', fontSize: '11px', borderBottom: '1px solid #333' }}>
+            <span style={{ color: '#aaa', textTransform: 'capitalize' }}>{stat}:</span>
+            <span style={{ color: 'white', fontWeight: 'bold' }}>{value > 0 ? '+' : ''}{value}{stat.includes('Chance') || stat.includes('xp') ? '%' : ''}</span>
+          </div>
+        ))}
+      </div>
+      {children}
+    </div>
+  );
+};
+
 export const Items = () => {
   return (
     <div style={{ padding: '20px', background: '#1a1a1a', minHeight: '100vh', color: 'white', fontFamily: 'sans-serif' }}>
@@ -58,53 +122,16 @@ export const Items = () => {
                 return acc;
               }, {});
 
-              return (
-                <div key={`${rarity.id}-${item.id}`} style={{
-                  minWidth: '200px',
-                  background: '#222',
-                  border: `2px solid ${rarity.color}`,
-                  borderRadius: '12px',
-                  padding: '15px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  boxShadow: `0 0 15px ${rarity.color}20`,
-                  position: 'relative',
-                  overflow: 'hidden'
-                }}>
-                  {/* Fundo com brilho sutil da cor da raridade */}
-                  <div style={{
-                    position: 'absolute',
-                    top: '-50%',
-                    left: '-50%',
-                    width: '200%',
-                    height: '200%',
-                    background: `radial-gradient(circle, ${rarity.color}10 0%, transparent 70%)`,
-                    pointerEvents: 'none'
-                  }} />
+              return <ItemCard key={`${rarity.id}-${item.id}`} item={{ ...item, rarity, stats }} />;
+            })}
+            
+            {BASE_CONSUMABLES.map(item => {
+              const stats = Object.entries(item.baseStats).reduce((acc, [key, val]) => {
+                acc[key] = Math.ceil(val * rarity.multiplier);
+                return acc;
+              }, {});
 
-                  <div style={{ fontSize: '48px', marginBottom: '15px', filter: `drop-shadow(0 0 5px ${rarity.color})`, zIndex: 1 }}>
-                    {item.icon}
-                  </div>
-                  
-                  <div style={{ color: rarity.color, fontWeight: 'bold', fontSize: '18px', marginBottom: '5px', textAlign: 'center', zIndex: 1 }}>
-                    {item.name}
-                  </div>
-                  
-                  <div style={{ fontSize: '12px', color: '#888', marginBottom: '15px', textTransform: 'uppercase', letterSpacing: '1px', zIndex: 1 }}>
-                    {rarity.name} - {item.type}
-                  </div>
-
-                  <div style={{ width: '100%', background: 'rgba(0,0,0,0.5)', borderRadius: '8px', padding: '10px', zIndex: 1 }}>
-                    {Object.entries(stats).map(([stat, value]) => (
-                      <div key={stat} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', fontSize: '14px', borderBottom: '1px solid #333', paddingBottom: '2px' }}>
-                        <span style={{ color: '#aaa', textTransform: 'capitalize' }}>{stat}:</span>
-                        <span style={{ color: 'white', fontWeight: 'bold' }}>{value > 0 ? '+' : ''}{value}{stat.includes('Chance') || stat.includes('xp') ? '%' : ''}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
+              return <ItemCard key={`${rarity.id}-${item.id}`} item={{ ...item, rarity, stats }} />;
             })}
           </div>
         </div>
