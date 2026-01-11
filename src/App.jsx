@@ -8,7 +8,7 @@ function App() {
     <BrowserRouter>
       <Routes>
         {/* Rota inicial (Menu) */}
-        <Route path="/" element={<Items />} />
+        <Route path="/" element={<Menu />} />
         
         {/* Rota do Jogo (Mapa) */}
         <Route path="/play" element={<Game />} />
