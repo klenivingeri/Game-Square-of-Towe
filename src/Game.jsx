@@ -43,7 +43,7 @@ export const Game = () => {
   const lastParticlePos = useRef({ x: pos.x, y: pos.y });
 
   const [inventory, setInventory] = useState([]);
-  const [stats, setStats] = useState({ money: 1000, gems: 0 });
+  const [stats, setStats] = useState({ money: 100, gems: 0 });
   const lastPos = useRef({ x: pos.x, y: pos.y });
   const [battleState, setBattleState] = useState('none'); // 'none', 'setup', 'fighting'
   const [selectedItemIds, setSelectedItemIds] = useState([]);

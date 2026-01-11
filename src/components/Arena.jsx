@@ -1,6 +1,8 @@
 import { memo, useState, useEffect, useRef, useMemo } from 'react';
 import punchSound from '../assets/sons/hit/classic-punch-impact-352711.mp3';
 import levelUpSound from '../assets/sons/cute-level-up-3-189853.mp3';
+import { BattleEntity } from './BattleEntity';
+import { generateArenaMobs, SIZES } from '../data/enemies';
 
 const BONUS_POOL = [
   { id: 'heal_30', name: 'Poção Menor', description: 'Recupera 30% de Vida', type: 'heal', value: 0.3, color: '#2ecc71', icon: '❤' },
@@ -15,10 +17,7 @@ const BONUS_POOL = [
 
 export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClose, battleItems }) => {
   // Configurações da Arena
-  const PLAYER_SIZE = 50;
-  const MOB_SIZE = 50;
-  const BONUS_SIZE = 30;
-  const BOSS_SIZE = 80;
+  const { PLAYER: PLAYER_SIZE, MOB: MOB_SIZE, BOSS: BOSS_SIZE, BONUS: BONUS_SIZE } = SIZES;
   const PLAYER_X = 30; // Posição fixa do player
 
   // Estado mutável do jogo (refs para performance no loop)
@@ -78,64 +77,7 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
   useEffect(() => {
     // 1. Inicializa: Gera de 2 a 7 mobs
     const mobCount = Math.floor(Math.random() * 6) + 2;
-    const initialMobs = [];
-    let xOffset = 280;
-    let mobCounter = 0;
-
-    for (let i = 0; i < mobCount; i++) {
-      // Adiciona Mob
-      initialMobs.push({
-        id: `mob-${i}`,
-        type: 'enemy',
-        hp: currentTileData?.mobHp || 30,
-        maxHp: currentTileData?.mobHp || 30,
-        dmg: currentTileData?.mobAtk || 5,
-        attack: 0,
-        hit: 0,
-        x: xOffset,
-        color: `hsl(${Math.random() * 360}, 70%, 50%)`
-      });
-
-      xOffset += 100;
-      mobCounter++;
-
-      // A cada 3 mobs, adiciona uma caixa de bônus
-      if (mobCounter === 3) {
-        initialMobs.push({
-          id: `bonus-${i}`,
-          type: 'bonus',
-          hp: 1,
-          maxHp: 1,
-          x: xOffset,
-          color: 'gold'
-        });
-        xOffset += 80; // Espaço menor para o bônus
-        mobCounter = 0;
-      }
-    }
-
-    // Se o último item for um bônus, adiciona um mob extra (que será o boss)
-    if (initialMobs.length > 0 && initialMobs[initialMobs.length - 1].type === 'bonus') {
-      initialMobs.push({
-        id: `mob-boss`,
-        type: 'enemy',
-        hp: currentTileData?.mobHp || 30,
-        maxHp: currentTileData?.mobHp || 30,
-        dmg: currentTileData?.mobAtk || 5,
-        attack: 0,
-        hit: 0,
-        x: xOffset,
-        color: `hsl(${Math.random() * 360}, 70%, 50%)`
-      });
-    }
-
-    // Define o último mob como Boss
-    const lastMob = initialMobs[initialMobs.length - 1];
-    if (lastMob && lastMob.type === 'enemy') {
-      lastMob.isBoss = true;
-      lastMob.hp *= 2; // Boss tem o dobro de vida
-      lastMob.maxHp *= 2;
-    }
+    const initialMobs = generateArenaMobs(mobCount, currentTileData);
 
     gameState.current = {
       playerHp: player.attributes.hp,
@@ -217,7 +159,7 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
         // O mob ativo vai até o player. Os outros ficam atrás dele.
         let targetX;
         if (index === state.currentMobIndex) {
-          targetX = PLAYER_X + PLAYER_SIZE;
+          targetX = PLAYER_X + PLAYER_SIZE + 3;
         } else {
           // O mob da frente é o index - 1
           const prevMob = state.mobs[index - 1];
@@ -226,7 +168,7 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
         }
 
         if (mob.x > targetX) {
-          mob.x -= 2;
+          mob.x = Math.max(targetX, mob.x - 2); // Garante que pare exatamente no alvo (snap)
           changed = true;
           // Se o mob ativo está andando, não há combate
           if (index === state.currentMobIndex && state.combat) state.combat = false;
@@ -494,105 +436,21 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
       marginTop: '10px'
     }}>
       {/* --- PLAYER --- */}
-      <div style={{
-        position: 'absolute',
-        left: PLAYER_X,
-        top: '170px',
-        width: PLAYER_SIZE,
-        height: PLAYER_SIZE,
-        background: render.playerHit > 0 ? 'white' : 'cyan',
-        transform: render.playerHit > 0 ? `translate(${Math.random() * 10 - 5}px, ${Math.random() * 10 - 5}px)` : 'none',
-        boxShadow: '0 0 15px cyan',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        fontWeight: 'bold',
-        color: '#000',
-        zIndex: 10
-      }}>
-        P
-        {/* Barra de Carga do Ataque (Player) - Vertical e Atrás */}
-        {render.combat && (
-          <div style={{
-            position: 'absolute',
-            top: 0,
-            left: '-10px',
-            width: '2px',
-            height: '100%',
-            background: '#222',
-            border: '1px solid #555',
-            transparency: '0.7',
-            overflow: 'hidden',
-            zIndex: -1
-          }}>
-            <div style={{
-              width: '100%',
-              height: `${render.playerAttack}%`,
-              background: 'yellow',
-              position: 'absolute',
-              bottom: 0
-            }} />
-          </div>
-        )}
-
-        {/* Barra de Vida (Player) */}
-        <div style={{
-          position: 'absolute',
-          bottom: '-15px',
-          left: 0,
-          width: '100%',
-          height: '12px',
-          background: '#222',
-          border: '1px solid #555',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}>
-          <div style={{
-            position: 'absolute',
-            left: 0,
-            top: 0,
-            width: `${(render.playerHp / render.playerMaxHp) * 100}%`,
-            height: '100%',
-            background: '#e74c3c',
-            transition: 'width 0.2s ease-out',
-            zIndex: 0
-          }} />
-          
-          {/* Texto de Vida */}
-          <span style={{
-            position: 'relative',
-            zIndex: 1,
-            fontSize: '9px',
-            color: 'white',
-            fontWeight: 'bold',
-            textShadow: '1px 1px 0 #000'
-          }}>
-            {render.playerHp}/{render.playerMaxHp}
-          </span>
-
-          {/* Escudo (Bloco ao lado direito) */}
-          {render.playerShield > 0 && (
-            <div style={{
-              position: 'absolute',
-              left: -10,
-              width: '16px',
-              height: '16px',
-              background: 'silver',
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              borderRadius: '2px',
-              fontSize: '8px',
-              color: 'black',
-              zIndex: 2,
-              boxShadow: '0 0 5px #3498db'
-            }}>
-              {render.playerShield}
-            </div>
-          )}
-        </div>
-      </div>
+      <BattleEntity
+        x={PLAYER_X}
+        y={170}
+        size={PLAYER_SIZE}
+        color="cyan"
+        hp={render.playerHp}
+        maxHp={render.playerMaxHp}
+        attackProgress={render.combat ? render.playerAttack : null}
+        hit={render.playerHit}
+        label="P"
+        shield={render.playerShield}
+        textColor="#000"
+        isAttacking={render.combat}
+        zIndex={20}
+      />
 
       {/* Barra de XP */}
       <div style={{
@@ -621,89 +479,28 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
         const isBoss = !!mob.isBoss;
         const size = isBonus ? BONUS_SIZE : (isBoss ? BOSS_SIZE : MOB_SIZE);
 
+        // Lógica de visibilidade da fila (apenas os 5 primeiros visíveis)
+        const relativeIndex = index - render.currentMobIndex;
+        const opacity = relativeIndex < 5 ? 1 : 0.4;
+
         return (
-          <div key={mob.id}>
-            <div style={{
-              position: 'absolute',
-              left: mob.x,
-              top: isBonus ? '190px' : (isBoss ? '140px' : '170px'), // Alinha com o chão (bottom: 80px -> y=220)
-              width: size,
-              height: size,
-              background: mob.hit > 0 ? 'white' : mob.color,
-              transform: mob.hit > 0 ? `translate(${Math.random() * 10 - 5}px, ${Math.random() * 10 - 5}px)` : 'none',
-              boxShadow: `0 0 15px ${mob.color}`,
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              fontWeight: 'bold',
-              color: '#fff',
-              zIndex: isCurrent ? 9 : 8, // Atual na frente
-              borderRadius: isBonus ? '4px' : '0'
-            }}>
-              {isBonus ? '?' : (isBoss ? 'BOSS' : `M${index + 1}`)}
-
-              {/* Barra de Carga do Ataque (Mob) - Vertical e Direita */}
-              {isCurrent && render.combat && !isBonus && (
-                <div style={{
-                  position: 'absolute',
-                  top: 0,
-                  right: '-10px',
-                  width: '2px',
-                  height: '100%',
-                  background: '#222',
-                  border: '1px solid #555',
-                  transparency: '0.7',
-                  overflow: 'hidden',
-                  zIndex: -1
-                }}>
-                  <div style={{
-                    width: '100%',
-                    height: `${mob.attack}%`,
-                    background: 'orange',
-                    position: 'absolute',
-                    bottom: 0
-                  }} />
-                </div>
-              )}
-
-              {/* Barra de Vida (Mob) */}
-              {!isBonus && (
-                <div style={{
-                  position: 'absolute',
-                  bottom: '-15px',
-                  left: 0,
-                  width: '100%',
-                  height: '12px',
-                  background: '#222',
-                  border: '1px solid #555',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
-                  <div style={{
-                    position: 'absolute',
-                    left: 0,
-                    top: 0,
-                    width: `${(mob.hp / mob.maxHp) * 100}%`,
-                    height: '100%',
-                    background: '#e74c3c',
-                    transition: 'width 0.2s ease-out',
-                    zIndex: 0
-                  }} />
-                  <span style={{
-                    position: 'relative',
-                    zIndex: 1,
-                    fontSize: '9px',
-                    color: 'white',
-                    fontWeight: 'bold',
-                    textShadow: '1px 1px 0 #000'
-                  }}>
-                    {mob.hp}/{mob.maxHp}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
+          <BattleEntity
+            key={mob.id}
+            x={mob.x}
+            y={isBonus ? 190 : (isBoss ? 140 : 170)}
+            size={size}
+            color={mob.color}
+            hp={mob.hp}
+            maxHp={mob.maxHp}
+            classMob={mob.mobClassName}
+            attackProgress={isCurrent && render.combat && !isBonus ? mob.attack : null}
+            hit={mob.hit}
+            label={mob.label}
+            isBonus={isBonus}
+            isBoss={isBoss}
+            isAttacking={isCurrent && render.combat}
+            opacity={opacity}
+          />
         );
       })}
 
