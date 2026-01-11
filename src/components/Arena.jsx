@@ -575,14 +575,14 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
           {render.playerShield > 0 && (
             <div style={{
               position: 'absolute',
-              right: 0,
+              left: -10,
               width: '16px',
-              height: '12px',
+              height: '16px',
               background: 'silver',
-              border: '1px solid #000',
               display: 'flex',
               justifyContent: 'center',
               alignItems: 'center',
+              borderRadius: '2px',
               fontSize: '8px',
               color: 'black',
               zIndex: 2,

@@ -151,8 +151,8 @@ export const Game = () => {
         icon = '💎';
         new Audio(jewelSound).play().catch(() => {});
         setDropInfo({ msg, icon });
-      } else if (dropRoll < 0.90) {
-        // 30% Consumível
+      } else {
+        // Consumível
         const baseItem = BASE_CONSUMABLES[Math.floor(Math.random() * BASE_CONSUMABLES.length)];
         const rarity = RARITIES[0]; // Comum
 
@@ -171,18 +171,6 @@ export const Game = () => {
 
         setPlayer(p => ({ ...p, items: [...(p.items || []), newItem] }));
         setDropInfo({ type: 'item', data: newItem });
-      } else {
-        // 10% Cosmético
-        const cosmeticTypes = [
-          { id: `cosm_hat_${Date.now()}`, name: 'Cartola Elegante', icon: '🎩', color: '#9b59b6' },
-          { id: `cosm_glasses_${Date.now()}`, name: 'Óculos Escuros', icon: '🕶', color: '#34495e' },
-          { id: `cosm_crown_${Date.now()}`, name: 'Coroa Real', icon: '👑', color: '#f1c40f' }
-        ];
-        const item = cosmeticTypes[Math.floor(Math.random() * cosmeticTypes.length)];
-        setPlayer(p => ({ ...p, cosmetics: [...(p.cosmetics || []), item] }));
-        msg = `Cosmético Raro: ${item.name}`;
-        icon = item.icon;
-        setDropInfo({ msg, icon });
       }
       setModalDropOpen(true);
     } else {

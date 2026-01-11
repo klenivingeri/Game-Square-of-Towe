@@ -7,7 +7,7 @@ export const Inventory = ({ player, setPlayer, gems, setStats }) => {
   const [tab, setTab] = useState('items'); // 'items' or 'cosmetics'
   const [selectedItem, setSelectedItem] = useState(null);
   const [diff, setDiff] = useState({});
-  
+
   // Gera 20 slots vazios para exemplo
   const slots = Array.from({ length: 20 });
 
@@ -47,7 +47,7 @@ export const Inventory = ({ player, setPlayer, gems, setStats }) => {
     // Calcula Diff
     const currentEquip = player.equipment[slot];
     const diffCalc = {};
-    
+
     // Remove stats do atual
     if (currentEquip && currentEquip.stats) {
       Object.entries(currentEquip.stats).forEach(([k, v]) => {
@@ -83,7 +83,7 @@ export const Inventory = ({ player, setPlayer, gems, setStats }) => {
           }
         });
       }
-      
+
       // Ajusta HP se o maxHp mudou (para não ficar com hp > maxHp)
       if (newAttributes.hp > newAttributes.maxHp) {
         newAttributes.hp = newAttributes.maxHp;
@@ -92,7 +92,7 @@ export const Inventory = ({ player, setPlayer, gems, setStats }) => {
       // Atualiza Inventário: Remove o item selecionado, Adiciona o antigo (se houver)
       const selectedId = selectedItem.uniqueId || selectedItem.id;
       const newItems = prev.items.filter(i => (i.uniqueId || i.id) !== selectedId);
-      
+
       if (currentEquip) {
         newItems.push(currentEquip);
       }
@@ -112,7 +112,7 @@ export const Inventory = ({ player, setPlayer, gems, setStats }) => {
 
   const handleUnequip = () => {
     if (!selectedItem) return;
-    
+
     // Encontra o slot onde o item está equipado
     const slotEntry = Object.entries(player.equipment).find(([k, v]) => v && (v.uniqueId === selectedItem.uniqueId || v.id === selectedItem.id));
     if (!slotEntry) return;
@@ -148,16 +148,16 @@ export const Inventory = ({ player, setPlayer, gems, setStats }) => {
 
   const handleSell = () => {
     if (!selectedItem) return;
-    
+
     const sellPrice = Math.floor((selectedItem.price || 0) * 0.4);
-    
+
     if (setStats) {
       setStats(prev => ({ ...prev, money: prev.money + sellPrice }));
     }
 
     setPlayer(prev => {
       const selectedId = selectedItem.uniqueId || selectedItem.id;
-      
+
       // Remove from equipment if equipped
       const newEquipment = { ...prev.equipment };
       let newAttributes = { ...prev.attributes };
@@ -206,10 +206,10 @@ export const Inventory = ({ player, setPlayer, gems, setStats }) => {
 
   return (
     <div style={{ display: 'flex', gap: '5px', height: '100%', overflowY: 'auto', paddingRight: '2px', flexWrap: 'wrap', alignContent: 'flex-start' }}>
-      
+
       {/* Coluna Esquerda: Equipamentos e Atributos */}
       <div style={{ flex: '1 1 150px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
-        
+
         {/* Equipamentos */}
         <div style={{ background: 'rgba(0,0,0,0.3)', padding: '5px', borderRadius: '8px' }}>
           <h3 style={{ borderBottom: '1px solid #555', paddingBottom: '2px', marginTop: 0, marginBottom: '5px', color: 'orange', fontSize: '14px' }}>Equipamentos</h3>
@@ -217,16 +217,16 @@ export const Inventory = ({ player, setPlayer, gems, setStats }) => {
             {equipmentSlots.map((slot) => {
               const item = equipment[slot.id];
               return (
-                <div key={slot.id} 
+                <div key={slot.id}
                   onClick={() => item && setSelectedItem(item)}
                   style={{
-                  width: '45px', height: '45px', 
-                  border: item ? `2px solid ${item.rarity?.color || '#555'}` : '2px dashed #555',
-                  borderRadius: '8px',
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                  background: item?.rarity?.color ? `${item.rarity.color}40` : (item ? '#2d3748' : 'rgba(0,0,0,0.2)'),
-                  cursor: 'pointer'
-                }}>
+                    width: '45px', height: '45px',
+                    border: item ? `2px solid ${item.rarity?.color || '#555'}` : '2px dashed #555',
+                    borderRadius: '8px',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                    background: item?.rarity?.color ? `${item.rarity.color}40` : (item ? '#2d3748' : 'rgba(0,0,0,0.2)'),
+                    cursor: 'pointer'
+                  }}>
                   <div style={{ fontSize: '18px' }}>{item?.icon || slot.icon}</div>
                   <div style={{ fontSize: '8px', color: '#888', textTransform: 'capitalize' }}>{slot.id}</div>
                 </div>
@@ -241,24 +241,24 @@ export const Inventory = ({ player, setPlayer, gems, setStats }) => {
 
       {/* Coluna Direita: Inventário (Bag) */}
       <div style={{ background: 'rgba(0,0,0,0.3)', padding: '5px', borderRadius: '8px', flex: '1 1 150px', display: 'flex', flexDirection: 'column' }}>
-        
+
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '5px', color: '#3498db', fontSize: '12px', fontWeight: 'bold' }}>
           💎 {gems || 0}
         </div>
 
         <div style={{ display: 'flex', gap: '5px', marginBottom: '5px' }}>
-          <button 
+          <button
             onClick={() => setTab('items')}
             style={{ flex: 1, padding: '6px', fontSize: '12px', background: tab === 'items' ? '#4a5568' : '#2d3748', border: 'none', color: 'white', borderRadius: '4px', cursor: 'pointer' }}>
             Equipamentos
           </button>
-          <button 
+          <button
             onClick={() => setTab('cosmetics')}
             style={{ flex: 1, padding: '6px', fontSize: '12px', background: tab === 'cosmetics' ? '#4a5568' : '#2d3748', border: 'none', color: 'white', borderRadius: '4px', cursor: 'pointer' }}>
-            Cosméticos
+            Poções
           </button>
         </div>
-        
+
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(35px, 1fr))', gap: '4px', overflowY: 'auto' }}>
           {slots.map((_, i) => {
             const list = tab === 'items' ? equipmentItems : cosmeticItems;
@@ -266,18 +266,18 @@ export const Inventory = ({ player, setPlayer, gems, setStats }) => {
             const itemColor = item?.rarity?.color || item?.color || '#444';
 
             return (
-              <div key={i} 
+              <div key={i}
                 onClick={() => item && setSelectedItem(item)}
                 title={item ? `${item.name}${item.rarity ? ` (${item.rarity.name})` : ''}` : ''}
-                style={{ 
-                aspectRatio: '1/1', 
-                background: 'rgba(255,255,255,0.05)', 
-                border: `1px solid ${item ? itemColor : '#444'}`, 
-                borderRadius: '4px',
-                display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '18px',
-                boxShadow: item ? `0 0 5px ${itemColor}40` : 'none',
-                cursor: item ? 'pointer' : 'default'
-              }}>
+                style={{
+                  aspectRatio: '1/1',
+                  background: 'rgba(255,255,255,0.05)',
+                  border: `1px solid ${item ? itemColor : '#444'}`,
+                  borderRadius: '4px',
+                  display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '18px',
+                  boxShadow: item ? `0 0 5px ${itemColor}40` : 'none',
+                  cursor: item ? 'pointer' : 'default'
+                }}>
                 {item ? item.icon : ''}
               </div>
             );
@@ -307,21 +307,21 @@ export const Inventory = ({ player, setPlayer, gems, setStats }) => {
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginTop: '15px', width: '100%' }}>
               {/* Verifica se está equipado */}
               {Object.values(player.equipment).some(e => e && (e.uniqueId === selectedItem.uniqueId || e.id === selectedItem.id)) ? (
-                  <button 
-                    onClick={handleUnequip}
-                    style={{ padding: '10px 20px', background: '#c0392b', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>
-                    Desequipar
-                  </button>
+                <button
+                  onClick={handleUnequip}
+                  style={{ padding: '10px 20px', background: '#c0392b', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>
+                  Desequipar
+                </button>
               ) : (
                 tab === 'items' && isEquipment(selectedItem) && (
-                  <button 
+                  <button
                     onClick={handleEquip}
                     style={{ padding: '10px 20px', background: '#27ae60', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>
                     Equipar
                   </button>
                 )
               )}
-              <button 
+              <button
                 onClick={handleSell}
                 style={{ padding: '10px 20px', background: '#e67e22', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>
                 Vender ({Math.floor((selectedItem.price || 0) * 0.4)} 💰)

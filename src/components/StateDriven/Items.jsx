@@ -13,16 +13,16 @@ export const RARITIES = [
 
 // Definição dos Itens Base (Sempre os mesmos, mudam com a raridade)
 export const BASE_ITEMS = [
-  { id: 'sword', name: 'Espada Longa', type: 'weapon', icon: '⚔️', baseStats: { attack: 5 } },
-  { id: 'axe', name: 'Machado de Guerra', type: 'weapon', icon: '🪓', baseStats: { attack: 7, speed: -1 } },
-  { id: 'shield', name: 'Escudo de Carvalho', type: 'shield', icon: '🛡️', baseStats: { defense: 3, shield: 5 } },
-  { id: 'helmet', name: 'Elmo de Ferro', type: 'head', icon: '🪖', baseStats: { hp: 10, defense: 1 } },
-  { id: 'chestplate', name: 'Peitoral de Aço', type: 'chest', icon: '👕', baseStats: { hp: 25, defense: 3 } },
-  { id: 'gloves', name: 'Luvas de Couro', type: 'arms', icon: '🧤', baseStats: { attack: 1, critChance: 2 } },
-  { id: 'pants', name: 'Calças Reforçadas', type: 'pants', icon: '👖', baseStats: { hp: 15, defense: 2 } },
-  { id: 'boots', name: 'Botas de Viajante', type: 'boots', icon: '👢', baseStats: { speed: 2, defense: 1 } },
-  { id: 'ring', name: 'Anel do Poder', type: 'accessory', icon: '💍', baseStats: { critChance: 5 } },
-  { id: 'amulet', name: 'Amuleto Antigo', type: 'accessory', icon: '🧿', baseStats: { maxHp: 20, xp: 5 } },
+  { id: 'sword', name: 'Espada Longa', type: 'weapon', icon: '⚔️', baseStats: { } },
+  { id: 'axe', name: 'Machado de Guerra', type: 'weapon', icon: '🪓', baseStats: { } },
+  { id: 'shield', name: 'Escudo de Carvalho', type: 'shield', icon: '🛡️', baseStats: { } },
+  { id: 'helmet', name: 'Elmo de Ferro', type: 'head', icon: '🪖', baseStats: { } },
+  { id: 'chestplate', name: 'Peitoral de Aço', type: 'chest', icon: '👕', baseStats: { } },
+  { id: 'gloves', name: 'Luvas de Couro', type: 'arms', icon: '🧤', baseStats: { } },
+  { id: 'pants', name: 'Calças Reforçadas', type: 'pants', icon: '👖', baseStats: { } },
+  { id: 'boots', name: 'Botas de Viajante', type: 'boots', icon: '👢', baseStats: { } },
+  { id: 'ring', name: 'Anel do Poder', type: 'accessory', icon: '💍', baseStats: { } },
+  { id: 'amulet', name: 'Amuleto Antigo', type: 'accessory', icon: '🧿', baseStats: { } },
 ];
 
 // Definição dos Itens Consumíveis
@@ -34,9 +34,38 @@ export const BASE_CONSUMABLES = [
   { id: 'potion_damage', name: 'Poção de Dano', type: 'damage', icon: '⚔️', baseStats: { damage: 10 } },
 ];
 
+// Array de atributos possíveis para sorteio
+export const ATTRIBUTES_POOL = ['hp', 'attack', 'defense', 'shield', 'critChance'];
+
+// Função para adicionar 1 ou 2 atributos aleatórios aos stats do item
+export const addRandomStats = (stats, multiplier = 1) => {
+  const newStats = { ...stats };
+  const count = Math.random() < 0.2 ? 2 : 1; // 20% de chance de ter 2 atributos
+
+  for (let i = 0; i < count; i++) {
+    let attr;
+    // 5% de chance de cair speed, pois é muito forte
+    if (Math.random() < 0.05) {
+      attr = 'speed';
+    } else {
+      attr = ATTRIBUTES_POOL[Math.floor(Math.random() * ATTRIBUTES_POOL.length)];
+    }
+    const value = Math.ceil((Math.floor(Math.random() * 5) + 1) * multiplier);
+    newStats[attr] = (newStats[attr] || 0) + value;
+  }
+  return newStats;
+};
+
 export const ItemCard = ({ item, style, onClick, children }) => {
   const { rarity, stats } = item;
   
+  // Garante que sempre haja pelo menos 2 linhas de atributos para manter o tamanho do card consistente
+  const statEntries = stats ? Object.entries(stats) : [];
+  const displayStats = [...statEntries];
+  while (displayStats.length < 2) {
+    displayStats.push([`empty-${displayStats.length}`, null]);
+  }
+
   return (
     <div onClick={onClick} style={{
       minWidth: '140px',
@@ -77,10 +106,16 @@ export const ItemCard = ({ item, style, onClick, children }) => {
       </div>
 
       <div style={{ width: '100%', background: 'rgba(0,0,0,0.5)', borderRadius: '4px', padding: '5px', marginBottom: '10px', flex: 1, zIndex: 1 }}>
-        {stats && Object.entries(stats).map(([stat, value]) => (
-          <div key={stat} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px', fontSize: '11px', borderBottom: '1px solid #333' }}>
-            <span style={{ color: '#aaa', textTransform: 'capitalize' }}>{stat}:</span>
-            <span style={{ color: 'white', fontWeight: 'bold' }}>{value > 0 ? '+' : ''}{value}{stat.includes('Chance') || stat.includes('xp') ? '%' : ''}</span>
+        {displayStats.map(([stat, value]) => (
+          <div key={stat} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px', fontSize: '11px', borderBottom: '1px solid #333', minHeight: '17px' }}>
+            {value !== null ? (
+              <>
+                <span style={{ color: '#aaa', textTransform: 'capitalize' }}>{stat}:</span>
+                <span style={{ color: 'white', fontWeight: 'bold' }}>{value > 0 ? '+' : ''}{value}{stat.includes('Chance') || stat.includes('xp') ? '%' : ''}</span>
+              </>
+            ) : (
+              <span>&nbsp;</span>
+            )}
           </div>
         ))}
       </div>
@@ -116,11 +151,14 @@ export const Items = () => {
           }}>
             {BASE_ITEMS.map(item => {
               // Calcula os atributos baseados na raridade
-              const stats = Object.entries(item.baseStats).reduce((acc, [key, val]) => {
+              let stats = Object.entries(item.baseStats).reduce((acc, [key, val]) => {
                 // Arredonda para cima para evitar números quebrados e garantir progressão
                 acc[key] = Math.ceil(val * rarity.multiplier);
                 return acc;
               }, {});
+
+              // Adiciona atributos aleatórios
+              stats = addRandomStats(stats, rarity.multiplier);
 
               return <ItemCard key={`${rarity.id}-${item.id}`} item={{ ...item, rarity, stats }} />;
             })}

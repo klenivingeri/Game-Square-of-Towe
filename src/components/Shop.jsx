@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { RARITIES, BASE_ITEMS, ItemCard } from './StateDriven/Items';
+import { RARITIES, BASE_ITEMS, ItemCard, addRandomStats } from './StateDriven/Items';
 
 export const Shop = ({ money, gems, player, setPlayer, setStats }) => {
   const [shopItems, setShopItems] = useState([]);
@@ -59,7 +59,7 @@ export const Shop = ({ money, gems, player, setPlayer, setStats }) => {
       // Variação de atributos (+/- 20%)
       const variance = 0.8 + Math.random() * 0.4;
 
-      const stats = Object.entries(baseItem.baseStats).reduce((acc, [key, val]) => {
+      let stats = Object.entries(baseItem.baseStats).reduce((acc, [key, val]) => {
         // Aplica multiplicador da raridade e a variância
         let finalVal = val * rarity.multiplier * variance;
         // Garante valor mínimo de 1 se o base for > 0
@@ -67,6 +67,9 @@ export const Shop = ({ money, gems, player, setPlayer, setStats }) => {
         acc[key] = finalVal;
         return acc;
       }, {});
+
+      // Adiciona atributos aleatórios (1 ou 2) usando a função do Items.jsx
+      stats = addRandomStats(stats, rarity.multiplier);
 
       // Preço baseado na raridade e qualidade (variance)
       const price = Math.floor(20 * rarity.multiplier * variance);
@@ -186,11 +189,18 @@ export const Shop = ({ money, gems, player, setPlayer, setStats }) => {
 
 
           <button
-            onClick={() => setIsAuto(!isAuto)}
+            onClick={() => {
+              if (isAuto) {
+                setIsAuto(false);
+              } else {
+                setIsAuto(true);
+                handleRefresh(true);
+              }
+            }}
             style={{
               flex: 1, padding: '11px', background: isAuto ? '#c0392b' : '#3498db', border: 'none', borderRadius: '4px', color: 'white', cursor: 'pointer', fontSize: '12px'
             }}>
-            {isAuto ? 'PARAR AUTO' : `AUTO REFRESH (-${REFRESH_COST} 💰)`}
+            {isAuto ? 'PARAR AUTO' : `AUTO (-${REFRESH_COST} 💰)`}
           </button>
 
           <select
@@ -216,15 +226,6 @@ export const Shop = ({ money, gems, player, setPlayer, setStats }) => {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '10px', overflowY: 'auto', paddingRight: '5px' }}>
         {shopItems.map((item) => (
           <ItemCard key={item.uniqueId} item={item}>
-            {/* Indicador de Qualidade (Variância) */}
-            <div style={{
-              position: 'absolute', top: 5, right: 5, fontSize: '10px',
-              color: item.variance > 1.1 ? '#2ecc71' : (item.variance < 0.9 ? '#e74c3c' : '#95a5a6'),
-              zIndex: 2
-            }}>
-              {item.variance > 1.1 ? '▲' : (item.variance < 0.9 ? '▼' : '-')}
-            </div>
-
             <button
               onClick={() => handleBuy(item)}
               style={{
