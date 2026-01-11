@@ -6,6 +6,7 @@ export const Inventory = ({ player, setPlayer, gems, setStats }) => {
   const { attributes, equipment } = player;
   const [tab, setTab] = useState('items'); // 'items' or 'cosmetics'
   const [selectedItem, setSelectedItem] = useState(null);
+  const [diff, setDiff] = useState({});
   
   // Gera 20 slots vazios para exemplo
   const slots = Array.from({ length: 20 });
@@ -19,6 +20,13 @@ export const Inventory = ({ player, setPlayer, gems, setStats }) => {
     { id: 'weapon', icon: 'o' },
     { id: 'shield', icon: 'o' }
   ];
+
+  // Helper para identificar equipamentos
+  const isEquipment = (item) => ['weapon', 'shield', 'head', 'chest', 'arms', 'pants', 'boots'].includes(item.type);
+
+  // Listas filtradas para as abas
+  const equipmentItems = player.items.filter(isEquipment);
+  const cosmeticItems = [...player.items.filter(i => !isEquipment(i)), ...player.cosmetics];
 
   const handleEquip = () => {
     if (!selectedItem) return;
@@ -35,6 +43,24 @@ export const Inventory = ({ player, setPlayer, gems, setStats }) => {
 
     const slot = slotMap[selectedItem.type];
     if (!slot) return;
+
+    // Calcula Diff
+    const currentEquip = player.equipment[slot];
+    const diffCalc = {};
+    
+    // Remove stats do atual
+    if (currentEquip && currentEquip.stats) {
+      Object.entries(currentEquip.stats).forEach(([k, v]) => {
+        diffCalc[k] = (diffCalc[k] || 0) - v;
+      });
+    }
+    // Adiciona stats do novo
+    if (selectedItem.stats) {
+      Object.entries(selectedItem.stats).forEach(([k, v]) => {
+        diffCalc[k] = (diffCalc[k] || 0) + v;
+      });
+    }
+    setDiff(diffCalc);
 
     setPlayer(prev => {
       const currentEquip = prev.equipment[slot];
@@ -84,6 +110,42 @@ export const Inventory = ({ player, setPlayer, gems, setStats }) => {
     setSelectedItem(null);
   };
 
+  const handleUnequip = () => {
+    if (!selectedItem) return;
+    
+    // Encontra o slot onde o item está equipado
+    const slotEntry = Object.entries(player.equipment).find(([k, v]) => v && (v.uniqueId === selectedItem.uniqueId || v.id === selectedItem.id));
+    if (!slotEntry) return;
+    const slot = slotEntry[0];
+
+    // Calcula Diff (Remoção)
+    const diffCalc = {};
+    if (selectedItem.stats) {
+      Object.entries(selectedItem.stats).forEach(([k, v]) => {
+        diffCalc[k] = (diffCalc[k] || 0) - v;
+      });
+    }
+    setDiff(diffCalc);
+
+    setPlayer(prev => {
+      const newAttributes = { ...prev.attributes };
+      if (selectedItem.stats) {
+        Object.entries(selectedItem.stats).forEach(([key, value]) => {
+          if (newAttributes[key] !== undefined) newAttributes[key] -= value;
+        });
+      }
+      if (newAttributes.hp > newAttributes.maxHp) newAttributes.hp = newAttributes.maxHp;
+
+      return {
+        ...prev,
+        attributes: newAttributes,
+        equipment: { ...prev.equipment, [slot]: null },
+        items: [...prev.items, selectedItem]
+      };
+    });
+    setSelectedItem(null);
+  };
+
   const handleSell = () => {
     if (!selectedItem) return;
     
@@ -105,11 +167,15 @@ export const Inventory = ({ player, setPlayer, gems, setStats }) => {
         if (newEquipment[slot] && (newEquipment[slot].uniqueId || newEquipment[slot].id) === selectedId) {
           // Remove stats
           if (newEquipment[slot].stats) {
+            // Calcula Diff para venda de equipado
+            const diffCalc = {};
             Object.entries(newEquipment[slot].stats).forEach(([key, value]) => {
+              diffCalc[key] = (diffCalc[key] || 0) - value;
               if (newAttributes[key] !== undefined) {
                 newAttributes[key] -= value;
               }
             });
+            setDiff(diffCalc);
           }
           newEquipment[slot] = null;
           wasEquipped = true;
@@ -119,6 +185,8 @@ export const Inventory = ({ player, setPlayer, gems, setStats }) => {
       // Remove from items and cosmetics
       const newItems = prev.items.filter(i => (i.uniqueId || i.id) !== selectedId);
       const newCosmetics = prev.cosmetics.filter(i => (i.uniqueId || i.id) !== selectedId);
+
+      if (!wasEquipped) setDiff({}); // Limpa diff se vendeu item da mochila
 
       // Adjust HP
       if (newAttributes.hp > newAttributes.maxHp) {
@@ -168,7 +236,7 @@ export const Inventory = ({ player, setPlayer, gems, setStats }) => {
         </div>
 
         {/* Atributos */}
-        <Attributes attributes={attributes} />
+        <Attributes attributes={attributes} diff={diff} />
       </div>
 
       {/* Coluna Direita: Inventário (Bag) */}
@@ -182,7 +250,7 @@ export const Inventory = ({ player, setPlayer, gems, setStats }) => {
           <button 
             onClick={() => setTab('items')}
             style={{ flex: 1, padding: '6px', fontSize: '12px', background: tab === 'items' ? '#4a5568' : '#2d3748', border: 'none', color: 'white', borderRadius: '4px', cursor: 'pointer' }}>
-            Itens
+            Equipamentos
           </button>
           <button 
             onClick={() => setTab('cosmetics')}
@@ -193,7 +261,7 @@ export const Inventory = ({ player, setPlayer, gems, setStats }) => {
         
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(35px, 1fr))', gap: '4px', overflowY: 'auto' }}>
           {slots.map((_, i) => {
-            const list = tab === 'items' ? player.items : player.cosmetics;
+            const list = tab === 'items' ? equipmentItems : cosmeticItems;
             const item = list && list[i];
             const itemColor = item?.rarity?.color || item?.color || '#444';
 
@@ -237,12 +305,21 @@ export const Inventory = ({ player, setPlayer, gems, setStats }) => {
             }}
           >
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginTop: '15px', width: '100%' }}>
-              {tab === 'items' && ['weapon', 'shield', 'head', 'chest', 'arms', 'pants', 'boots'].includes(selectedItem.type) && (
-                <button 
-                  onClick={handleEquip}
-                  style={{ padding: '10px 20px', background: '#27ae60', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>
-                  Equipar
-                </button>
+              {/* Verifica se está equipado */}
+              {Object.values(player.equipment).some(e => e && (e.uniqueId === selectedItem.uniqueId || e.id === selectedItem.id)) ? (
+                  <button 
+                    onClick={handleUnequip}
+                    style={{ padding: '10px 20px', background: '#c0392b', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>
+                    Desequipar
+                  </button>
+              ) : (
+                tab === 'items' && isEquipment(selectedItem) && (
+                  <button 
+                    onClick={handleEquip}
+                    style={{ padding: '10px 20px', background: '#27ae60', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>
+                    Equipar
+                  </button>
+                )
               )}
               <button 
                 onClick={handleSell}
