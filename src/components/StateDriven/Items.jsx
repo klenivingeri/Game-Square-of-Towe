@@ -76,7 +76,7 @@ export const ItemCard = ({ item, style, onClick, children }) => {
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
-      boxShadow: `0 0 10px ${rarity?.color || '#444'}20`,
+      boxShadow: `0 0 15px ${rarity?.color || '#444'}60`,
       position: 'relative',
       overflow: 'hidden',
       cursor: onClick ? 'pointer' : 'default',
@@ -89,7 +89,7 @@ export const ItemCard = ({ item, style, onClick, children }) => {
         left: '-50%',
         width: '200%',
         height: '200%',
-        background: `radial-gradient(circle, ${rarity?.color || '#444'}10 0%, transparent 70%)`,
+        background: `radial-gradient(circle, ${rarity?.color || '#444'}30 0%, transparent 70%)`,
         pointerEvents: 'none'
       }} />
 

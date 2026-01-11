@@ -159,7 +159,7 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
         // O mob ativo vai até o player. Os outros ficam atrás dele.
         let targetX;
         if (index === state.currentMobIndex) {
-          targetX = PLAYER_X + PLAYER_SIZE + 3;
+          targetX = PLAYER_X + PLAYER_SIZE + 7;
         } else {
           // O mob da frente é o index - 1
           const prevMob = state.mobs[index - 1];
@@ -490,6 +490,7 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
             y={isBonus ? 190 : (isBoss ? 140 : 170)}
             size={size}
             color={mob.color}
+            borderColor={mob.borderColor}
             hp={mob.hp}
             maxHp={mob.maxHp}
             classMob={mob.mobClassName}

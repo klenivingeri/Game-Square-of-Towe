@@ -1,7 +1,7 @@
 import React, { memo } from 'react';
 
 export const BattleEntity = memo(({
-  x, y, size, color,
+  x, y, size, color, borderColor,
   hp, maxHp,
   attackProgress, // 0-100
   hit, // > 0 indica que tomou dano
@@ -18,11 +18,12 @@ export const BattleEntity = memo(({
   isMoving = false
 }) => {
   // Lógica de animação (Shake ao tomar dano ou Scale ao atacar)
-  const transform = hit > 0 
-    ? `translate(${Math.random() * 10 - 5}px, ${Math.random() * 10 - 5}px)` 
+  const transform = hit > 0
+    ? `translate(${Math.random() * 10 - 5}px, ${Math.random() * 10 - 5}px)`
     : (isAttacking ? 'scale(1.1)' : 'none');
 
   const bgColor = hit > 0 ? 'white' : color;
+  const shadowColor = borderColor || color;
 
   return (
     <div style={{
@@ -32,9 +33,10 @@ export const BattleEntity = memo(({
       width: size,
       height: size,
       background: bgColor,
+      border: `1px solid ${borderColor || color || 'black'}`,
       transform,
       opacity,
-      boxShadow: `0 0 15px ${color}`,
+      boxShadow: `0 0 15px ${shadowColor}`,
       display: 'flex',
       flexDirection: 'column',
       justifyContent: 'center',
@@ -74,8 +76,8 @@ export const BattleEntity = memo(({
       {!isBonus && (
         <div style={{
           position: 'absolute',
-          bottom: '-15px',
-          left: 0,
+          bottom: '-16px',
+          left: -1,
           width: '100%',
           height: '12px',
           background: '#222',
@@ -104,25 +106,26 @@ export const BattleEntity = memo(({
           }}>
             {Math.ceil(hp)}/{maxHp}
           </span>
-          
+
           {/* Escudo */}
           {shield > 0 && (
-             <div style={{
+            <div style={{
               position: 'absolute',
-              left: -10,
-              width: '16px',
-              height: '16px',
-              background: 'silver',
+              left: -12,
+              width: '20px',
+              height: '20px',
               display: 'flex',
               justifyContent: 'center',
               alignItems: 'center',
-              borderRadius: '2px',
-              fontSize: '8px',
-              color: 'black',
               zIndex: 2,
-              boxShadow: '0 0 5px #3498db'
+              filter: 'drop-shadow(0 0 2px #3498db)'
             }}>
-              {Math.floor(shield)}
+              <svg viewBox="0 0 24 24" fill="silver" style={{ position: 'absolute', width: '100%', height: '100%' }}>
+                <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" />
+              </svg>
+              <span style={{ position: 'relative', fontSize: '8px', fontWeight: 'bold', color: 'black' }}>
+                {Math.floor(shield)}
+              </span>
             </div>
           )}
         </div>

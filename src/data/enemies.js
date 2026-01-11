@@ -1,8 +1,29 @@
 export const SIZES = {
   PLAYER: 50,
   MOB: 50,
+  ELITE: 65,
   BOSS: 80,
   BONUS: 30
+};
+
+export const RARITIES_MOBS = [
+  { id: 'common', name: 'Comum', borderColor: '#95a5a6', rarities: 60 },       // Cinza
+  { id: 'uncommon', name: 'Incomum', borderColor: '#2ecc71', rarities: 20 }, // Verde
+  { id: 'rare', name: 'Raro', borderColor: '#3498db', rarities: 10 },          // Azul
+  { id: 'heroic', name: 'Heroico', borderColor: '#9b59b6', rarities: 5 },     // Roxo
+  { id: 'legendary', name: 'Lendário', borderColor: '#f1c40f', rarities: 3 }, // Amarelo
+  { id: 'mythic', name: 'Mítico', borderColor: '#e67e22', rarities: 1.5 },      // Laranja
+  { id: 'immortal', name: 'Imortal', borderColor: '#e74c3c', rarities: 0.5 },  // Vermelho
+];
+
+export const COLORS_MOBS = {
+  common: '#2c3e50',
+  uncommon: '#1b3d2f',
+  rare: '#1a2a3a',
+  heroic: '#2d1e33',
+  legendary: '#3e3612',
+  mythic: '#3d2315',
+  immortal: '#3b1616',
 };
 
 export const MOB_CATEGORIES = {
@@ -21,6 +42,17 @@ export const MOB_CLASSES = {
   HEALER: { id: 'healer', name: 'Curandeiro', icon: '💚' }
 };
 
+// Helper para sortear raridade
+const getRarity = () => {
+  const totalWeight = RARITIES_MOBS.reduce((acc, r) => acc + r.rarities, 0);
+  let random = Math.random() * totalWeight;
+  for (const rarity of RARITIES_MOBS) {
+    if (random < rarity.rarities) return rarity;
+    random -= rarity.rarities;
+  }
+  return RARITIES_MOBS[0];
+};
+
 export const generateArenaMobs = (count, tileData) => {
   const initialMobs = [];
   let xOffset = 280;
@@ -32,6 +64,9 @@ export const generateArenaMobs = (count, tileData) => {
     // Sorteia Classe
     const randomClassKey = classKeys[Math.floor(Math.random() * classKeys.length)];
     const mobClass = MOB_CLASSES[randomClassKey];
+
+    // Sorteia Raridade
+    const rarity = getRarity();
 
     // Adiciona Mob
     initialMobs.push({
@@ -47,7 +82,8 @@ export const generateArenaMobs = (count, tileData) => {
       attack: 0,
       hit: 0,
       x: xOffset,
-      color: `hsl(${Math.random() * 360}, 70%, 50%)`,
+      color: COLORS_MOBS[rarity.id],
+      borderColor: rarity.borderColor,
       label: `M${i + 1}`,
       skills: [] // Preparado para receber skills
     });
@@ -74,7 +110,7 @@ export const generateArenaMobs = (count, tileData) => {
 
   // Se o último item for um bônus, adiciona um mob extra (que será o boss)
   if (initialMobs.length > 0 && initialMobs[initialMobs.length - 1].type === 'bonus') {
-    const bossColor = `hsl(${Math.random() * 360}, 70%, 50%)`;
+    const rarity = getRarity();
     const randomClassKey = classKeys[Math.floor(Math.random() * classKeys.length)];
     const mobClass = MOB_CLASSES[randomClassKey];
 
@@ -91,7 +127,8 @@ export const generateArenaMobs = (count, tileData) => {
       attack: 0,
       hit: 0,
       x: xOffset,
-      color: bossColor,
+      color: COLORS_MOBS[rarity.id],
+      borderColor: rarity.borderColor,
       label: 'BOSS',
       isBoss: true,
       skills: []
@@ -120,7 +157,7 @@ export const generateArenaMobs = (count, tileData) => {
     if (level >= 3 && level <= 12) {
       lastEnemy.category = 'ELITE';
       lastEnemy.label = 'ELITE';
-      lastEnemy.color = MOB_CATEGORIES.ELITE.color;
+      // lastEnemy.color = MOB_CATEGORIES.ELITE.color; // Mantém a cor da raridade
       lastEnemy.hp = (tileData?.mobHp || 30) * 2.5; // Elite tem mais vida
       lastEnemy.maxHp = lastEnemy.hp;
       lastEnemy.dmg = (tileData?.mobAtk || 5) * 1.5;
@@ -136,7 +173,7 @@ export const generateArenaMobs = (count, tileData) => {
     if (level === 12 && Math.random() < 0.5) {
       lastEnemy.category = 'LEADER';
       lastEnemy.label = 'LÍDER';
-      lastEnemy.color = MOB_CATEGORIES.LEADER.color;
+      // lastEnemy.color = MOB_CATEGORIES.LEADER.color; // Mantém a cor da raridade
       lastEnemy.hp = (tileData?.mobHp || 30) * 4; // Leader tem muita vida
       lastEnemy.maxHp = lastEnemy.hp;
       lastEnemy.dmg = (tileData?.mobAtk || 5) * 2;
