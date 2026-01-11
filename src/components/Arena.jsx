@@ -1,4 +1,4 @@
-import { memo, useState, useEffect, useRef } from 'react';
+import { memo, useState, useEffect, useRef, useMemo } from 'react';
 import punchSound from '../assets/sons/hit/classic-punch-impact-352711.mp3';
 import levelUpSound from '../assets/sons/cute-level-up-3-189853.mp3';
 
@@ -39,7 +39,8 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
     goldGained: 0,
     gemsGained: 0,
     result: null,
-    activeBonuses: []
+    activeBonuses: [],
+    floatingTexts: []
   });
 
   // Estado para renderização visual
@@ -48,13 +49,27 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
   const [bonusOptions, setBonusOptions] = useState([]);
   const [bonusFocusIndex, setBonusFocusIndex] = useState(0);
 
-  // OTIMIZAÇÃO: Refs para áudio para evitar criar 'new Audio()' a cada frame/hit
-  const hitAudioRef = useRef(new Audio(punchSound));
-  const levelUpAudioRef = useRef(new Audio(levelUpSound));
-  useEffect(() => {
-    hitAudioRef.current.volume = 0.5;
-    levelUpAudioRef.current.volume = 0.5;
+  // OTIMIZAÇÃO E CORREÇÃO DE BUG DE ÁUDIO:
+  // Usamos useMemo para criar a instância base apenas uma vez.
+  // Usamos cloneNode() na hora de tocar para garantir uma instância "fresca" e permitir sobreposição de sons.
+  const audioBase = useMemo(() => {
+    const hit = new Audio(punchSound);
+    const lvl = new Audio(levelUpSound);
+    hit.volume = 0.5;
+    lvl.volume = 0.5;
+    // Preload ajuda a garantir que o áudio esteja pronto
+    hit.preload = 'auto'; 
+    lvl.preload = 'auto';
+    return { hit, lvl };
   }, []);
+
+  // Função auxiliar para tocar som sem travar
+  const playSound = (audioInstance) => {
+    // cloneNode() é rápido e resolve o problema de travamento ao trocar de abas
+    const sound = audioInstance.cloneNode();
+    sound.volume = audioInstance.volume;
+    sound.play().catch(() => {});
+  };
 
   // Ref para acessar o estado atual do player dentro do loop sem recriar o loop
   const playerRef = useRef(player);
@@ -139,7 +154,8 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
       goldGained: 0,
       gemsGained: 0,
       result: null,
-      activeBonuses: []
+      activeBonuses: [],
+      floatingTexts: []
     };
     setRender({ ...gameState.current });
     setBonusModalOpen(false);
@@ -165,6 +181,19 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
       }
       if (activeMob && activeMob.hit > 0) {
         activeMob.hit--;
+        changed = true;
+      }
+
+      // Atualiza Textos Flutuantes
+      if (state.floatingTexts.length > 0) {
+        state.floatingTexts.forEach(ft => {
+          // Sobe apenas enquanto está crescendo (primeiros 20% da vida)
+          if (ft.life > 40) {
+            ft.y -= 1;
+          }
+          ft.life--;
+        });
+        state.floatingTexts = state.floatingTexts.filter(ft => ft.life > 0);
         changed = true;
       }
 
@@ -228,7 +257,7 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
         // Barra de ataque do Player enchendo
         if (state.playerAttack < 100) {
           // Usa o atributo de velocidade do player
-          state.playerAttack += playerRef.current.attributes.speed;
+          state.playerAttack += (playerRef.current.attributes.speed || 1);
           changed = true;
         } else {
           // Player Ataca
@@ -241,9 +270,19 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
           activeMob.hp -= damage;
           activeMob.hit = 5; // Pisca branco por 5 frames
 
+          // Floating Text (Dano no Mob)
+          state.floatingTexts.push({
+            id: Date.now() + Math.random(),
+            x: activeMob.x + 10,
+            y: (activeMob.type === 'bonus' ? 190 : (activeMob.isBoss ? 140 : 170)) - 20,
+            text: damage,
+            color: isCrit ? '#f1c40f' : 'white',
+            isCrit: isCrit,
+            life: 50
+          });
+
           // Tocar som de impacto
-          hitAudioRef.current.currentTime = 0;
-          hitAudioRef.current.play().catch(() => {});
+          playSound(audioBase.hit);
 
           state.playerAttack = 0;
           changed = true;
@@ -270,9 +309,19 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
             state.playerHp -= mobDamage;
             state.playerHit = 5; // Pisca branco por 5 frames
 
+            // Floating Text (Dano no Player)
+            state.floatingTexts.push({
+              id: Date.now() + Math.random(),
+              x: PLAYER_X + 10,
+              y: 150,
+              text: mobDamage,
+              color: '#e74c3c',
+              isCrit: false,
+              life: 50
+            });
+
             // Tocar som de impacto no player
-            hitAudioRef.current.currentTime = 0;
-            hitAudioRef.current.play().catch(() => {});
+            playSound(audioBase.hit);
 
             activeMob.attack = 0;
             changed = true;
@@ -327,8 +376,7 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
               state.playerMaxHp = attr.maxHp;
 
               // Tocar som de Level Up
-              levelUpAudioRef.current.currentTime = 0;
-              levelUpAudioRef.current.play().catch(() => {});
+              playSound(audioBase.lvl);
 
               alert(`LEVEL UP! Você alcançou o nível ${attr.level}!`);
             }
@@ -463,45 +511,87 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
         zIndex: 10
       }}>
         P
-        {/* Barra de Carga do Ataque (Player) */}
+        {/* Barra de Carga do Ataque (Player) - Vertical e Atrás */}
         {render.combat && (
           <div style={{
             position: 'absolute',
-            bottom: '-10px',
-            left: 0,
-            width: '100%',
-            height: '4px',
-            background: '#555'
+            top: 0,
+            left: '-10px',
+            width: '2px',
+            height: '100%',
+            background: '#222',
+            border: '1px solid #555',
+            transparency: '0.7',
+            overflow: 'hidden',
+            zIndex: -1
           }}>
             <div style={{
-              width: `${render.playerAttack}%`,
-              height: '100%',
-              background: 'yellow'
+              width: '100%',
+              height: `${render.playerAttack}%`,
+              background: 'yellow',
+              position: 'absolute',
+              bottom: 0
             }} />
           </div>
         )}
-      </div>
-      {/* HP Player */}
-      <div style={{
-        position: 'absolute',
-        left: PLAYER_X,
-        top: '145px',
-        width: PLAYER_SIZE,
-        textAlign: 'center',
-        color: 'white',
-        fontSize: '12px'
-      }}>
-        {render.playerHp}/{render.playerMaxHp}
-        {/* Visualização do Escudo */}
-        {render.playerShield > 0 && (
+
+        {/* Barra de Vida (Player) */}
+        <div style={{
+          position: 'absolute',
+          bottom: '-15px',
+          left: 0,
+          width: '100%',
+          height: '12px',
+          background: '#222',
+          border: '1px solid #555',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
           <div style={{
-            color: '#4da6ff',
+            position: 'absolute',
+            left: 0,
+            top: 0,
+            width: `${(render.playerHp / render.playerMaxHp) * 100}%`,
+            height: '100%',
+            background: '#e74c3c',
+            transition: 'width 0.2s ease-out',
+            zIndex: 0
+          }} />
+          
+          {/* Texto de Vida */}
+          <span style={{
+            position: 'relative',
+            zIndex: 1,
+            fontSize: '9px',
+            color: 'white',
             fontWeight: 'bold',
-            textShadow: '0 0 5px blue'
+            textShadow: '1px 1px 0 #000'
           }}>
-            Shield: {render.playerShield}
-          </div>
-        )}
+            {render.playerHp}/{render.playerMaxHp}
+          </span>
+
+          {/* Escudo (Bloco ao lado direito) */}
+          {render.playerShield > 0 && (
+            <div style={{
+              position: 'absolute',
+              right: 0,
+              width: '16px',
+              height: '12px',
+              background: 'silver',
+              border: '1px solid #000',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              fontSize: '8px',
+              color: 'black',
+              zIndex: 2,
+              boxShadow: '0 0 5px #3498db'
+            }}>
+              {render.playerShield}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Barra de XP */}
@@ -552,36 +642,67 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
             }}>
               {isBonus ? '?' : (isBoss ? 'BOSS' : `M${index + 1}`)}
 
-              {/* Barra de Carga do Ataque (Apenas Mob Atual) */}
+              {/* Barra de Carga do Ataque (Mob) - Vertical e Direita */}
               {isCurrent && render.combat && !isBonus && (
                 <div style={{
                   position: 'absolute',
-                  bottom: '-10px',
-                  left: 0,
-                  width: '100%',
-                  height: '4px',
-                  background: '#555'
+                  top: 0,
+                  right: '-10px',
+                  width: '2px',
+                  height: '100%',
+                  background: '#222',
+                  border: '1px solid #555',
+                  transparency: '0.7',
+                  overflow: 'hidden',
+                  zIndex: -1
                 }}>
                   <div style={{
-                    width: `${mob.attack}%`,
-                    height: '100%',
-                    background: 'orange'
+                    width: '100%',
+                    height: `${mob.attack}%`,
+                    background: 'orange',
+                    position: 'absolute',
+                    bottom: 0
                   }} />
                 </div>
               )}
+
+              {/* Barra de Vida (Mob) */}
+              {!isBonus && (
+                <div style={{
+                  position: 'absolute',
+                  bottom: '-15px',
+                  left: 0,
+                  width: '100%',
+                  height: '12px',
+                  background: '#222',
+                  border: '1px solid #555',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <div style={{
+                    position: 'absolute',
+                    left: 0,
+                    top: 0,
+                    width: `${(mob.hp / mob.maxHp) * 100}%`,
+                    height: '100%',
+                    background: '#e74c3c',
+                    transition: 'width 0.2s ease-out',
+                    zIndex: 0
+                  }} />
+                  <span style={{
+                    position: 'relative',
+                    zIndex: 1,
+                    fontSize: '9px',
+                    color: 'white',
+                    fontWeight: 'bold',
+                    textShadow: '1px 1px 0 #000'
+                  }}>
+                    {mob.hp}/{mob.maxHp}
+                  </span>
+                </div>
+              )}
             </div>
-            {/* HP Mob */}
-            {!isBonus && <div style={{
-              position: 'absolute',
-              left: mob.x,
-              top: isBoss ? '115px' : '145px',
-              width: MOB_SIZE,
-              textAlign: 'center',
-              color: 'white',
-              fontSize: '12px'
-            }}>
-              {mob.hp}/{mob.maxHp}
-            </div>}
           </div>
         );
       })}
@@ -706,6 +827,44 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
           </div>
         </div>
       )}
+
+      {/* TEXTOS FLUTUANTES (Dano) */}
+      {render.floatingTexts && render.floatingTexts.map(ft => {
+        const maxLife = 50;
+        const progress = 1 - (ft.life / maxLife);
+        let scale = 1;
+        let opacity = 1;
+
+        if (progress < 0.2) {
+          scale = (progress / 0.2) * 1.5;
+          opacity = progress / 0.2;
+        } else if (progress < 0.4) {
+          const p = (progress - 0.2) / 0.2;
+          scale = 1.5 - (p * 0.5);
+        } else {
+          const p = (progress - 0.4) / 0.6;
+          scale = 1.0 - (p * 0.2);
+          opacity = 1 - p;
+        }
+
+        return (
+          <div key={ft.id} style={{
+            position: 'absolute',
+            left: ft.x,
+            top: ft.y,
+            color: ft.color,
+            fontSize: ft.isCrit ? '24px' : '16px',
+            fontWeight: 'bold',
+            textShadow: '1px 1px 0 #000',
+            pointerEvents: 'none',
+            zIndex: 100,
+            opacity: opacity,
+            transform: `scale(${scale})`
+          }}>
+            -{Math.floor(ft.text)}
+          </div>
+        );
+      })}
 
       {/* TELA DE RESULTADO (Vitória/Derrota) */}
       {render.result && (

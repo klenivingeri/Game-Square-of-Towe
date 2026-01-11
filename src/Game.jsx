@@ -254,7 +254,7 @@ export const Game = () => {
 
         const currentBarLevel = progressBarRef.current ? convertPercentage(progressBarRef.current.style.width) : 0;
         // Chance ajustada (0.7%) pois agora só roda quando a barra está acima do nível 3
-        if (currentBarLevel >= 2 && Math.random() < 0.006) {
+        if (currentBarLevel >= 2 && Math.random() < 0.007) {
           handleEvent(newX, newY);
           totalWalkedRef.current = 0;
           triggerDistanceRef.current = mapHeight;
@@ -627,6 +627,7 @@ export const Game = () => {
           setPlayer={setPlayer}
           money={stats.money} 
           gems={stats.gems}
+          setStats={setStats}
         />
     </div>
   );

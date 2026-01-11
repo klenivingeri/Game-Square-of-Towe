@@ -38,7 +38,7 @@ const icons = {
   )
 };
 
-export const Nav = memo(({ player, setPlayer, money, gems }) => {
+export const Nav = memo(({ player, setPlayer, money, gems, setStats }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [activeModal, setActiveModal] = useState(null); // 'inventory', 'shop', 'quest', 'attributes'
 
@@ -133,7 +133,7 @@ export const Nav = memo(({ player, setPlayer, money, gems }) => {
           <Inventory player={player} setPlayer={setPlayer} gems={gems} />
         )}
         {activeModal === 'shop' && (
-          <Shop money={money} />
+          <Shop money={money} gems={gems} player={player} setPlayer={setPlayer} setStats={setStats} />
         )}
         {activeModal === 'quest' && (
           <Quest />
