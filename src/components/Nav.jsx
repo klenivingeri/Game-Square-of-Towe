@@ -69,13 +69,12 @@ export const Nav = memo(({ player, setPlayer, money, gems, setStats, activeModal
           onClick={() => setIsOpen(true)}
           style={{
             background: 'rgba(0, 0, 0, 0.8)',
-            color: 'cyan',
-            border: '1px solid cyan',
+            color: 'white',
+            border: '1px solid white',
             padding: '12px 24px',
             borderRadius: '8px',
             cursor: 'pointer',
             fontWeight: 'bold',
-            boxShadow: '0 0 15px cyan',
             fontSize: '16px',
             textTransform: 'uppercase',
             letterSpacing: '1px',
@@ -105,7 +104,7 @@ export const Nav = memo(({ player, setPlayer, money, gems, setStats, activeModal
             style={{
               background: 'transparent',
               border: 'none',
-              color: 'cyan',
+              color: 'white',
               fontSize: '24px',
               cursor: 'pointer',
               padding: '5px 0',
@@ -167,8 +166,8 @@ const NavBtn = ({ icon, label, onClick }) => (
     }}
     onMouseEnter={(e) => {
       e.currentTarget.style.background = 'rgba(0, 255, 255, 0.1)';
-      e.currentTarget.style.borderColor = 'cyan';
-      e.currentTarget.style.color = 'cyan';
+      e.currentTarget.style.borderColor = 'white';
+      e.currentTarget.style.color = 'white';
     }}
     onMouseLeave={(e) => {
       e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';

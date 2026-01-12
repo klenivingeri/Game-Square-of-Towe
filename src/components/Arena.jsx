@@ -13,12 +13,19 @@ const BONUS_POOL = [
   { id: 'dmg_15', name: 'Lâmina Sombria', description: '+15 de Dano (Batalha)', type: 'damage', value: 15, color: '#c0392b', icon: '🗡' },
   { id: 'crit_10', name: 'Concentração', description: '+10% Crítico (Batalha)', type: 'crit', value: 10, color: '#f1c40f', icon: '🎯' },
   { id: 'crit_25', name: 'Instinto Assassino', description: '+25% Crítico (Batalha)', type: 'crit', value: 25, color: '#f39c12', icon: '☠' },
+  { id: 'gold_50', name: 'Saco de Ouro', description: '+50 Ouro', type: 'gold', value: 50, color: '#f1c40f', icon: '💰' },
+  { id: 'gem_1', name: 'Diamante', description: '+1 Diamante', type: 'gem', value: 1, color: '#9b59b6', icon: '💎' },
+  { id: 'debuff_archer', name: 'Quebra-Arcos', description: '-10% Vida (Arqueiros)', type: 'debuff_class', targetClass: 'archer', value: 0.1, color: '#d35400', icon: '🏹' },
+  { id: 'debuff_mage', name: 'Silêncio', description: '-10% Vida (Magos)', type: 'debuff_class', targetClass: 'mage', value: 0.1, color: '#8e44ad', icon: '🔮' },
+  { id: 'debuff_warrior', name: 'Quebra-Escudo', description: 'Remove Escudo (Guerreiros)', type: 'debuff_shield', targetClass: 'warrior', value: 1, color: '#7f8c8d', icon: '🛡️' },
+  { id: 'debuff_assassin', name: 'Revelação', description: '-10% Vida (Assassinos)', type: 'debuff_class', targetClass: 'assassin', value: 0.1, color: '#2c3e50', icon: '🗡️' },
+  { id: 'debuff_healer', name: 'Maldição', description: '-10% Vida (Curandeiros)', type: 'debuff_class', targetClass: 'healer', value: 0.1, color: '#27ae60', icon: '💚' },
 ];
 
 export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClose, battleItems }) => {
   // Configurações da Arena
   const { PLAYER: PLAYER_SIZE, MOB: MOB_SIZE, ELITE: ELITE_SIZE, BOSS: BOSS_SIZE, BONUS: BONUS_SIZE } = SIZES;
-  const PLAYER_X = 30; // Posição fixa do player
+  const PLAYER_X = 140; // Posição fixa do player
 
   // Estado mutável do jogo (refs para performance no loop)
   const gameState = useRef({
@@ -48,6 +55,7 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
   const [bonusModalOpen, setBonusModalOpen] = useState(false);
   const [bonusOptions, setBonusOptions] = useState([]);
   const [bonusFocusIndex, setBonusFocusIndex] = useState(0);
+  const [usedDefaultItems, setUsedDefaultItems] = useState([]);
 
   // OTIMIZAÇÃO E CORREÇÃO DE BUG DE ÁUDIO:
   // Usamos useMemo para criar a instância base apenas uma vez.
@@ -176,7 +184,7 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
           const prevMob = state.mobs[index - 1];
           const prevIsElite = prevMob.category === 'ELITE';
           const prevSize = prevMob.type === 'bonus' ? BONUS_SIZE : (prevIsElite ? ELITE_SIZE : (prevMob.isBoss ? BOSS_SIZE : MOB_SIZE));
-          targetX = prevMob.x + prevSize + 50;
+          targetX = prevMob.x + prevSize + 80;
         }
 
         if (mob.x > targetX) {
@@ -438,6 +446,43 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
       state.tempAttackBonus += option.value;
     } else if (option.type === 'crit') {
       state.tempCritBonus = (state.tempCritBonus || 0) + option.value;
+    } else if (option.type === 'gold') {
+      state.goldGained += option.value;
+      if (setStats) setStats(s => ({ ...s, money: s.money + option.value }));
+      state.floatingTexts.push({
+        id: Date.now(),
+        x: PLAYER_X + 25,
+        y: 150,
+        text: `+${option.value} 💰`,
+        color: '#f1c40f',
+        life: 60
+      });
+    } else if (option.type === 'gem') {
+      state.gemsGained += option.value;
+      if (setStats) setStats(s => ({ ...s, gems: s.gems + option.value }));
+      state.floatingTexts.push({
+        id: Date.now(),
+        x: PLAYER_X + 25,
+        y: 150,
+        text: `+${option.value} 💎`,
+        color: '#9b59b6',
+        life: 60
+      });
+    } else if (option.type === 'debuff_class') {
+      state.mobs.forEach((mob, i) => {
+        if (i > state.currentMobIndex && mob.type === 'enemy' && mob.mobClass === option.targetClass) {
+          const dmg = Math.floor(mob.maxHp * option.value);
+          mob.hp = Math.max(1, mob.hp - dmg);
+        }
+      });
+    } else if (option.type === 'debuff_shield') {
+      state.mobs.forEach((mob, i) => {
+        if (i > state.currentMobIndex && mob.type === 'enemy' && mob.mobClass === option.targetClass) {
+          if (mob.shield > 0) {
+            mob.shield = 0;
+          }
+        }
+      });
     }
 
     state.activeBonuses.push(option); // Adiciona à lista de bônus ativos
@@ -460,11 +505,15 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
       state.tempAttackBonus += item.value;
     }
 
-    // Remove o item do inventário do player
-    setPlayer(prev => ({
-      ...prev,
-      items: prev.items.filter(i => i.id !== item.id)
-    }));
+    if (item.isDefault) {
+      setUsedDefaultItems(prev => [...prev, item.id]);
+    } else {
+      // Remove o item do inventário do player
+      setPlayer(prev => ({
+        ...prev,
+        items: prev.items.filter(i => i.id !== item.id)
+      }));
+    }
   };
 
   // Reset bonus focus
@@ -509,23 +558,30 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
       border: '2px solid #444',
       marginTop: '10px'
     }}>
+      <style>{`
+        @keyframes playerEntrance {
+          0% { transform: translateX(-100px); opacity: 1; }
+          100% { transform: translateX(0); opacity: 1; }
+        }
+      `}</style>
       {/* --- PLAYER --- */}
-      <BattleEntity
-        x={PLAYER_X}
-        y={170}
-        size={PLAYER_SIZE}
-        color="cyan"
-        hp={render.playerHp}
-        maxHp={render.playerMaxHp}
-        attackProgress={render.combat ? render.playerAttack : null}
-        hit={render.playerHit}
-        label="P"
-        shield={render.playerShield}
-        textColor="#000"
-        isAttacking={render.combat}
-        levelUpProgress={render.levelUpProgress}
-        zIndex={20}
-      />
+      <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 20, animation: 'playerEntrance 1s ease-out' }}>
+        <BattleEntity
+          x={PLAYER_X}
+          y={170}
+          size={PLAYER_SIZE}
+          color="cyan"
+          hp={render.playerHp}
+          maxHp={render.playerMaxHp}
+          attackProgress={render.combat ? render.playerAttack : null}
+          hit={render.playerHit}
+          label="P"
+          shield={render.playerShield}
+          textColor="#000"
+          isAttacking={render.combat}
+          levelUpProgress={render.levelUpProgress}
+        />
+      </div>
 
       {/* Barra de XP */}
       <div style={{
@@ -601,7 +657,7 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
         gap: '10px',
         zIndex: 20
       }}>
-        {battleItems && battleItems.map((item) => (
+        {battleItems && battleItems.filter(i => !usedDefaultItems.includes(i.id)).map((item) => (
           <div 
             key={item.id}
             onClick={() => handleUseConsumable(item)}

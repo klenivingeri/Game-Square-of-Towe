@@ -16,6 +16,14 @@ export const Shop = ({ money, gems, player, setPlayer, setStats }) => {
     const saved = localStorage.getItem('rpg_shop_last_refresh');
     return saved ? parseInt(saved, 10) : 0;
   });
+  const [freeRefreshes, setFreeRefreshes] = useState(() => {
+    const saved = localStorage.getItem('rpg_shop_free_refreshes');
+    return saved ? parseInt(saved, 10) : 3;
+  });
+  const [lastFreeReset, setLastFreeReset] = useState(() => {
+    const saved = localStorage.getItem('rpg_shop_last_free_reset');
+    return saved ? parseInt(saved, 10) : 0;
+  });
   const [timeString, setTimeString] = useState('--:--');
 
   // Custos
@@ -101,13 +109,17 @@ export const Shop = ({ money, gems, player, setPlayer, setStats }) => {
 
   // Ação de Atualizar (Refresh)
   const handleRefresh = useCallback((isAutoCall = false) => {
-    if (money < refreshCost) {
+    const useFree = !isAutoCall && freeRefreshes > 0;
+
+    if (!useFree && money < refreshCost) {
       if (!isAutoCall) alert("Ouro insuficiente para atualizar!");
       else setIsAuto(false);
       return;
     }
 
-    if (setStats) {
+    if (useFree) {
+      setFreeRefreshes(prev => prev - 1);
+    } else if (setStats) {
       setStats(prev => ({ ...prev, money: prev.money - refreshCost }));
     }
 
@@ -122,7 +134,7 @@ export const Shop = ({ money, gems, player, setPlayer, setStats }) => {
         setIsAuto(false); // Para o auto
       }
     }
-  }, [money, generateItems, targetRarity, setStats, refreshCost]);
+  }, [money, generateItems, targetRarity, setStats, refreshCost, freeRefreshes]);
 
   // Efeito para o Auto Refresh
   useEffect(() => {
@@ -140,7 +152,20 @@ export const Shop = ({ money, gems, player, setPlayer, setStats }) => {
     localStorage.setItem('rpg_shop_level', shopLevel);
     localStorage.setItem('rpg_shop_items', JSON.stringify(shopItems));
     localStorage.setItem('rpg_shop_last_refresh', lastRefresh.toString());
-  }, [shopLevel, shopItems, lastRefresh]);
+    localStorage.setItem('rpg_shop_free_refreshes', freeRefreshes);
+  }, [shopLevel, shopItems, lastRefresh, freeRefreshes]);
+
+  // Reset diário das atualizações grátis
+  useEffect(() => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+
+    if (lastFreeReset < today) {
+      setFreeRefreshes(3);
+      setLastFreeReset(today);
+      localStorage.setItem('rpg_shop_last_free_reset', today.toString());
+    }
+  }, [lastFreeReset]);
 
   // Timer de 30 minutos para refresh automático
   useEffect(() => {
@@ -239,10 +264,10 @@ export const Shop = ({ money, gems, player, setPlayer, setStats }) => {
           onClick={() => handleRefresh(false)}
           disabled={isAuto}
           style={{
-            flex: 1, padding: '8px', background: '#e67e22', border: 'none', borderRadius: '4px', color: 'white', cursor: 'pointer', fontWeight: 'bold',
+            flex: 1, padding: '8px', background: freeRefreshes > 0 ? '#2ecc71' : '#e67e22', border: 'none', borderRadius: '4px', color: 'white', cursor: 'pointer', fontWeight: 'bold',
             opacity: isAuto ? 0.5 : 1
           }}>
-          Atualizar (-{refreshCost} 💰)
+          {freeRefreshes > 0 ? `Grátis (${freeRefreshes}/3)` : `Atualizar (-${refreshCost} 💰)`}
         </button>
 
         <div style={{ display: 'flex', flexDirection: 'row', flex: 1, gap: '5px' }}>

@@ -16,7 +16,9 @@ export const BattleEntity = memo(({
   // Props preparadas para futuras animações
   isAttacking = false,
   isMoving = false,
-  levelUpProgress = null
+  levelUpProgress = null,
+  style = {},
+  className = ''
 }) => {
   // Lógica de animação (Shake ao tomar dano ou Scale ao atacar)
   const transform = hit > 0
@@ -27,7 +29,7 @@ export const BattleEntity = memo(({
   const shadowColor = borderColor || color;
 
   return (
-    <div style={{
+    <div className={className} style={{
       position: 'absolute',
       left: x,
       top: y,
@@ -47,7 +49,8 @@ export const BattleEntity = memo(({
       color: textColor,
       zIndex: zIndex,
       borderRadius: isBonus ? '4px' : '0',
-      transition: 'transform 0.05s'
+      transition: 'transform 0.05s',
+      ...style
     }}>
       {label}
 

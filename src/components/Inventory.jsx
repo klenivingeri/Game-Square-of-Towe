@@ -6,6 +6,7 @@ export const Inventory = ({ player, setPlayer, gems, setStats }) => {
   const { attributes, equipment } = player;
   const [tab, setTab] = useState('items'); // 'items' or 'cosmetics'
   const [selectedItem, setSelectedItem] = useState(null);
+  const [isUpgrading, setIsUpgrading] = useState(false);
   const [diff, setDiff] = useState({});
 
   // Gera 20 slots vazios para exemplo
@@ -279,6 +280,8 @@ export const Inventory = ({ player, setPlayer, gems, setStats }) => {
       return { ...prev, attributes: newAttributes, equipment: newEquipment, items: newItems, cosmetics: newCosmetics };
     });
     setSelectedItem(newItem);
+    setIsUpgrading(true);
+    setTimeout(() => setIsUpgrading(false), 600);
   };
 
   return (
@@ -371,6 +374,13 @@ export const Inventory = ({ player, setPlayer, gems, setStats }) => {
           zIndex: 200,
           display: 'flex', justifyContent: 'center', alignItems: 'center'
         }} onClick={() => setSelectedItem(null)}>
+          <style>{`
+            @keyframes upgradePulse {
+              0% { box-shadow: 0 0 15px ${selectedItem.rarity?.color || '#444'}60; transform: scale(1); }
+              50% { box-shadow: 0 0 50px ${selectedItem.rarity?.color || '#444'}, 0 0 20px white; transform: scale(1.05); }
+              100% { box-shadow: 0 0 15px ${selectedItem.rarity?.color || '#444'}60; transform: scale(1); }
+            }
+          `}</style>
           <ItemCard
             item={selectedItem}
             onClick={(e) => e.stopPropagation()}
@@ -378,7 +388,8 @@ export const Inventory = ({ player, setPlayer, gems, setStats }) => {
               maxWidth: '300px',
               width: '90%',
               cursor: 'default',
-              background: '#2d3748'
+              background: '#2d3748',
+              animation: isUpgrading ? 'upgradePulse 0.6s ease-in-out' : 'none'
             }}
           >
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginTop: '15px', width: '100%' }}>

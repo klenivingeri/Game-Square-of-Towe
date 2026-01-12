@@ -21,7 +21,10 @@ export const Game = () => {
   const [activeNavModal, setActiveNavModal] = useState(null);
   const [dropInfo, setDropInfo] = useState(null);
   const [mapInfo, setMapInfo] = useState({});
-  const [mapLevel, setMapLevel] = useState(0);
+  const [mapLevel, setMapLevel] = useState(() => {
+    const saved = localStorage.getItem('rpg_map_level');
+    return saved ? parseInt(saved, 10) : 0;
+  });
   const gameMap = useMemo(() => createMatchMap(mapLevel), [mapLevel]);
   const ROWS = gameMap.length;
   const COLS = gameMap[0].length;
@@ -114,7 +117,24 @@ export const Game = () => {
 
   // Memoiza os itens de batalha para evitar recriação de array e re-render da Arena
   const battleItems = useMemo(() => {
-    return player.items.filter(i => selectedItemIds.includes(i.id));
+    const selected = player.items.filter(i => selectedItemIds.includes(i.id));
+    
+    // Preenche slots vazios com Poção de Vida Default (Metade do valor: 25)
+    const defaults = [];
+    const slotsNeeded = 2 - selected.length;
+    for (let i = 0; i < slotsNeeded; i++) {
+      defaults.push({
+        id: `default_potion_slot_${i}`,
+        name: 'Poção de Vida',
+        type: 'heal',
+        icon: '❤',
+        value: 25,
+        color: '#e74c3c',
+        isDefault: true
+      });
+    }
+    
+    return [...selected, ...defaults];
   }, [player.items, selectedItemIds]);
 
   // --- REFERÊNCIAS PARA O LERP ---
@@ -346,7 +366,9 @@ export const Game = () => {
         if (newX < portalHitBox.x + portalHitBox.w && newX + playerSize > portalHitBox.x && newY < portalHitBox.y + portalHitBox.h && newY + playerSize > portalHitBox.y) {
           setPortalVisible(false);
           setModalPortalOpen(false);
-          setMapLevel(prev => prev + 1);
+          const nextLevel = mapLevel + 1;
+          localStorage.setItem('rpg_map_level', nextLevel);
+          window.location.reload();
           return;
         }
       }
@@ -493,7 +515,7 @@ export const Game = () => {
         backgroundColor: tile.cor,
         zIndex: tile.zIndex,
         boxSizing: 'border-box',
-        boxShadow: `0 0 20px ${tile.cor}`,
+        boxShadow: `0 0 5px ${tile.cor}`,
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
@@ -786,34 +808,40 @@ export const Game = () => {
                   transform: setupFocusIndex === consumables.length ? 'scale(1.1)' : 'scale(1)',
                   zIndex: 10
                 }}>
-                LUTAR! {setupFocusIndex === consumables.length && <span style={{ fontSize: '12px' }}></span>}
+                ENTRAR NA DUNGEON! {setupFocusIndex === consumables.length && <span style={{ fontSize: '12px' }}></span>}
               </button>
 
               {/* Slots de Consumíveis (Lado Direito) */}
               <div style={{ position: 'absolute', right: 0, top: 0, height: '100%', display: 'flex', gap: '10px' }}>
                 {[0, 1].map(slotIndex => {
                   const itemId = selectedItemIds[slotIndex];
-                  const item = itemId ? consumables.find(i => i.id === itemId) : null;
+                  const selectedItem = itemId ? consumables.find(i => i.id === itemId) : null;
+                  
+                  const item = selectedItem || {
+                    name: 'Poção de Vida',
+                    icon: '❤',
+                    value: 25,
+                    color: '#e74c3c',
+                    isDefault: true
+                  };
 
                   return (
                     <div key={slotIndex} style={{
                       width: '50px', height: '50px',
-                      border: '1px dashed #555',
+                      border: selectedItem ? '1px solid #fff' : '1px dashed #555',
                       borderRadius: '8px',
                       background: 'rgba(0,0,0,0.5)',
                       display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
-                      position: 'relative'
+                      position: 'relative',
+                      opacity: selectedItem ? 1 : 0.8
                     }}>
-                      {item ? (
-                        <>
-                          <div style={{ fontSize: '20px' }}>{item.icon}</div>
-                          <div style={{ fontSize: '10px', color: 'white', fontWeight: 'bold', position: 'absolute', bottom: '2px', right: '2px', textShadow: '0 0 2px black' }}>
-                            {item.value || (item.stats ? Object.values(item.stats)[0] : '?')}
-                          </div>
-                        </>
-                      ) : (
-                        <span style={{ fontSize: '10px', color: '#444' }}>Vazio</span>
-                      )}
+                      <>
+                        <div style={{ fontSize: '20px' }}>{item.icon}</div>
+                        <div style={{ fontSize: '10px', color: 'white', fontWeight: 'bold', position: 'absolute', bottom: '2px', right: '2px', textShadow: '0 0 2px black' }}>
+                          {item.value || (item.stats ? Object.values(item.stats)[0] : '?')}
+                        </div>
+                        {item.isDefault && <div style={{ position: 'absolute', top: -2, right: -2, width: '6px', height: '6px', background: '#e74c3c', borderRadius: '50%' }} />}
+                      </>
                     </div>
                   );
                 })}

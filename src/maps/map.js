@@ -14,32 +14,32 @@ const gridLevel = {
   12: { cor: "#000000", zIndex: 12 }, // Final Marrom (Escuro Total)
 
   // --- TEMA FLORESTA / VERDE (Nível 13 ao 24) ---
-  13: { cor: "#2ecc71", zIndex: 13 }, // Verde Esmeralda
-  14: { cor: "#27ae60", zIndex: 14 },
-  15: { cor: "#219150", zIndex: 15 },
-  16: { cor: "#1b7541", zIndex: 16 },
-  17: { cor: "#155a32", zIndex: 17 },
-  18: { cor: "#104024", zIndex: 18 },
-  19: { cor: "#0b2d19", zIndex: 19 },
-  20: { cor: "#071c0f", zIndex: 20 },
-  21: { cor: "#040f08", zIndex: 21 },
-  22: { cor: "#020704", zIndex: 22 },
-  23: { cor: "#010301", zIndex: 23 },
-  24: { cor: "#000000", zIndex: 24 }, // Final Verde (Escuro Total)
+  13: { cor: "#2ecc71", zIndex: 1 }, // Verde Esmeralda
+  14: { cor: "#27ae60", zIndex: 2 },
+  15: { cor: "#219150", zIndex: 3 },
+  16: { cor: "#1b7541", zIndex: 4 },
+  17: { cor: "#155a32", zIndex: 5 },
+  18: { cor: "#104024", zIndex: 6 },
+  19: { cor: "#0b2d19", zIndex: 7 },
+  20: { cor: "#071c0f", zIndex: 8 },
+  21: { cor: "#040f08", zIndex: 9 },
+  22: { cor: "#020704", zIndex: 10 },
+  23: { cor: "#010301", zIndex: 11 },
+  24: { cor: "#000000", zIndex: 2 }, // Final Verde (Escuro Total)
 
   // --- TEMA OCEANO / AZUL (Nível 25 ao 36) ---
-  25: { cor: "#3498db", zIndex: 25 }, // Azul Brilhante
-  26: { cor: "#2980b9", zIndex: 26 },
-  27: { cor: "#2471a3", zIndex: 27 },
-  28: { cor: "#1f618d", zIndex: 28 },
-  29: { cor: "#1a5276", zIndex: 29 },
-  30: { cor: "#154360", zIndex: 30 },
-  31: { cor: "#11344c", zIndex: 31 },
-  32: { cor: "#0d2538", zIndex: 32 },
-  33: { cor: "#081824", zIndex: 33 },
-  34: { cor: "#050b12", zIndex: 34 },
-  35: { cor: "#020508", zIndex: 35 },
-  36: { cor: "#000000", zIndex: 36 }, // Final Azul (Escuro Total)
+  25: { cor: "#3498db", zIndex: 1 }, // Azul Brilhante
+  26: { cor: "#2980b9", zIndex: 2 },
+  27: { cor: "#2471a3", zIndex: 3 },
+  28: { cor: "#1f618d", zIndex: 4 },
+  29: { cor: "#1a5276", zIndex: 5 },
+  30: { cor: "#154360", zIndex: 6 },
+  31: { cor: "#11344c", zIndex: 7 },
+  32: { cor: "#0d2538", zIndex: 8 },
+  33: { cor: "#081824", zIndex: 9 },
+  34: { cor: "#050b12", zIndex: 10 },
+  35: { cor: "#020508", zIndex: 11 },
+  36: { cor: "#000000", zIndex: 12 }, // Final Azul (Escuro Total)
 };
 
 
