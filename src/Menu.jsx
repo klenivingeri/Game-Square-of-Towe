@@ -1,12 +1,16 @@
 import { useNavigate } from 'react-router-dom';
 import { toggleFullScreen } from './help/toggleFullScreen';
+import { useDeviceType } from './hooks/useDeviceType';
 
 export const Menu = () => {
   const navigate = useNavigate();
+  const deviceType = useDeviceType();
 
   const handleStart = () => {
-    // Ativa o modo tela cheia
-    toggleFullScreen();
+    // Ativa o modo tela cheia somente em dispositivos móveis
+    if (deviceType === 'mobile') {
+      toggleFullScreen();
+    }
     // Navega para a tela do jogo
     navigate('/play');
   };
@@ -54,3 +58,4 @@ export const Menu = () => {
     </div>
   );
 }
+
