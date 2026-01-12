@@ -13,16 +13,25 @@ export const RARITIES = [
 
 // Definição dos Itens Base (Sempre os mesmos, mudam com a raridade)
 export const BASE_ITEMS = [
-  { id: 'sword', name: 'Espada Longa', type: 'weapon', icon: '⚔️', baseStats: { } },
-  { id: 'axe', name: 'Machado de Guerra', type: 'weapon', icon: '🪓', baseStats: { } },
-  { id: 'shield', name: 'Escudo de Carvalho', type: 'shield', icon: '🛡️', baseStats: { } },
-  { id: 'helmet', name: 'Elmo de Ferro', type: 'head', icon: '🪖', baseStats: { } },
-  { id: 'chestplate', name: 'Peitoral de Aço', type: 'chest', icon: '👕', baseStats: { } },
-  { id: 'gloves', name: 'Luvas de Couro', type: 'arms', icon: '🧤', baseStats: { } },
-  { id: 'pants', name: 'Calças Reforçadas', type: 'pants', icon: '👖', baseStats: { } },
-  { id: 'boots', name: 'Botas de Viajante', type: 'boots', icon: '👢', baseStats: { } },
-  { id: 'ring', name: 'Anel do Poder', type: 'accessory', icon: '💍', baseStats: { } },
-  { id: 'amulet', name: 'Amuleto Antigo', type: 'accessory', icon: '🧿', baseStats: { } },
+  // ARMAS (Dano e Crítico)
+  { id: 'sword', name: 'Espada Longa', type: 'weapon', icon: '⚔️', baseStats: { attack: null, critChance: null } },
+  { id: 'axe', name: 'Machado de Guerra', type: 'weapon', icon: '🪓', baseStats: { attack: null, critChance: null } },
+
+  // ESCUDO (Defesa e Shield)
+  { id: 'shield', name: 'Escudo de Carvalho', type: 'shield', icon: '🛡️', baseStats: { defense: null, shield: null } },
+
+  // ARMADURA DE PEITO (Defesa e Shield)
+  { id: 'chestplate', name: 'Peitoral de Aço', type: 'chest', icon: '👕', baseStats: { defense: null, shield: null } },
+
+  // PARTES DA ARMADURA (Apenas Shield)
+  { id: 'helmet', name: 'Elmo de Ferro', type: 'head', icon: '🪖', baseStats: { shield: null } },
+  { id: 'gloves', name: 'Luvas de Couro', type: 'arms', icon: '🧤', baseStats: { shield: null } },
+  { id: 'pants', name: 'Calças Reforçadas', type: 'pants', icon: '👖', baseStats: { shield: null } },
+  { id: 'boots', name: 'Botas de Viajante', type: 'boots', icon: '👢', baseStats: { shield: null } },
+
+  // ACESSÓRIOS (Atributos mistos/utilitários) podem receber qualquer atributo
+  { id: 'ring', name: 'Anel do Poder', type: 'accessory', icon: '💍', baseStats: {} },
+  { id: 'amulet', name: 'Amuleto Antigo', type: 'accessory', icon: '🧿', baseStats: {} },
 ];
 
 // Definição dos Itens Consumíveis
@@ -37,15 +46,37 @@ export const BASE_CONSUMABLES = [
 export const ATTRIBUTES_POOL = ['hp', 'attack', 'defense', 'shield', 'critChance'];
 
 // Função para adicionar 1 ou 2 atributos aleatórios aos stats do item
-export const addRandomStats = (stats, multiplier = 1, count = null) => {
+export const addRandomStats = (stats, multiplier = 1, count = null, item = null) => {
   const newStats = { ...stats };
-  const finalCount = count !== null ? count : (Math.random() < 0.2 ? 2 : 1);
 
-  for (let i = 0; i < finalCount; i++) {
-    let attr = ATTRIBUTES_POOL[Math.floor(Math.random() * ATTRIBUTES_POOL.length)];
-    const value = Math.ceil((Math.floor(Math.random() * 5) + 1) * multiplier);
-    newStats[attr] = (newStats[attr] || 0) + value;
+  // Para itens com atributos pré-definidos em baseStats (ex: armas, armaduras)
+  if (item && Object.keys(item.baseStats).length > 0) {
+    const attributes = Object.keys(item.baseStats);
+    for (const attr of attributes) {
+      const value = Math.ceil((Math.floor(Math.random() * 5) + 1) * multiplier);
+      newStats[attr] = (newStats[attr] || 0) + value;
+    }
   }
+  // Para itens que podem ter atributos aleatórios (ex: acessórios)
+  else {
+    const finalCount = count !== null ? count : (Math.random() < 0.2 ? 2 : 1);
+    const pool = [...ATTRIBUTES_POOL]; // Clona o array para poder modificar
+
+    for (let i = 0; i < finalCount; i++) {
+      if (pool.length === 0) break;
+
+      // Escolhe um atributo aleatório do pool
+      const attrIndex = Math.floor(Math.random() * pool.length);
+      const attr = pool[attrIndex];
+
+      // Remove o atributo do pool para não ser escolhido novamente
+      pool.splice(attrIndex, 1);
+
+      const value = Math.ceil((Math.floor(Math.random() * 5) + 1) * multiplier);
+      newStats[attr] = (newStats[attr] || 0) + value;
+    }
+  }
+
   return newStats;
 };
 
@@ -131,6 +162,10 @@ export const ItemCard = ({ item, style, onClick, children }) => {
   );
 };
 
+const generateUniqueId = () => {
+  return `item_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+};
+
 export const Items = () => {
   return (
     <div style={{ padding: '20px', background: '#1a1a1a', minHeight: '100vh', color: 'white', fontFamily: 'sans-serif' }}>
@@ -156,27 +191,37 @@ export const Items = () => {
             marginTop: '20px',
             paddingBottom: '15px'
           }}>
-            {BASE_ITEMS.map(item => {
-              // Calcula os atributos baseados na raridade
-              let stats = Object.entries(item.baseStats).reduce((acc, [key, val]) => {
-                // Arredonda para cima para evitar números quebrados e garantir progressão
-                acc[key] = Math.ceil(val * rarity.multiplier);
-                return acc;
-              }, {});
+            {BASE_ITEMS.map(baseItem => {
+              // Inicializa os stats como um objeto vazio
+              let stats = {};
 
-              // Adiciona atributos aleatórios
-              stats = addRandomStats(stats, rarity.multiplier);
+              // Adiciona atributos aleatórios com base no item
+              stats = addRandomStats(stats, rarity.multiplier, null, baseItem);
 
-              return <ItemCard key={`${rarity.id}-${item.id}`} item={{ ...item, rarity, stats }} />;
+              const item = {
+                ...baseItem,
+                instanceId: generateUniqueId(), // Adiciona um ID de instância único
+                rarity,
+                stats
+              };
+
+              return <ItemCard key={item.instanceId} item={item} />;
             })}
             
-            {BASE_CONSUMABLES.map(item => {
-              const stats = Object.entries(item.baseStats).reduce((acc, [key, val]) => {
+            {BASE_CONSUMABLES.map(baseItem => {
+              const stats = Object.entries(baseItem.baseStats).reduce((acc, [key, val]) => {
                 acc[key] = Math.ceil(val * rarity.multiplier);
                 return acc;
               }, {});
 
-              return <ItemCard key={`${rarity.id}-${item.id}`} item={{ ...item, rarity, stats }} />;
+              const item = {
+                ...baseItem,
+                instanceId: generateUniqueId(),
+                rarity,
+                stats
+              }
+
+              return <ItemCard key={item.instanceId} item={item} />;
             })}
           </div>
         </div>

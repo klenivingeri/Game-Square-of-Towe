@@ -9,7 +9,11 @@ function App() {
     <BrowserRouter>
       <Routes>
         {/* Rota inicial (Menu) */}
-        <Route path="/" element={<MobsGallery />} />
+        <Route path="/" element={<Menu />} />
+
+        <Route path="/items" element={<Items />} />
+
+        <Route path="/mobs" element={<MobsGallery />} />
         
         {/* Rota do Jogo (Mapa) */}
         <Route path="/play" element={<Game />} />

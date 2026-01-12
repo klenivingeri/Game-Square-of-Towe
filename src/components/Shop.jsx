@@ -79,17 +79,15 @@ export const Shop = ({ money, gems, player, setPlayer, setStats }) => {
       // Variação de atributos (+/- 20%)
       const variance = 0.8 + Math.random() * 0.4;
 
-      let stats = Object.entries(baseItem.baseStats).reduce((acc, [key, val]) => {
-        // Aplica multiplicador da raridade e a variância
-        let finalVal = val > 0 ? Math.max(1, Math.round(val * rarity.multiplier * variance)) : 0;
-        acc[key] = finalVal;
-        return acc;
-      }, {});
+      // Começa com stats vazios
+      let stats = {};
 
       // Adiciona atributos extras baseado no tier da raridade
       const rarityIndex = RARITIES.findIndex(r => r.id === rarity.id);
       const extraStatsCount = Math.floor(rarityIndex / 1.5) + 1;
-      stats = addRandomStats(stats, rarity.multiplier, extraStatsCount);
+      
+      // Chama a função addRandomStats corretamente, passando o item base
+      stats = addRandomStats(stats, rarity.multiplier * variance, extraStatsCount, baseItem);
 
       // Preço baseado na raridade (priceMult) e qualidade (variance)
       const basePrice = 20;
