@@ -111,7 +111,7 @@ export const BattleEntity = memo(({
           {shield > 0 && (
             <div style={{
               position: 'absolute',
-              left: -12,
+              [label === 'P' ? 'left' : 'right']: -12,
               width: '20px',
               height: '20px',
               display: 'flex',

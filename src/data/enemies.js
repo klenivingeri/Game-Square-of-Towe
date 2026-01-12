@@ -42,6 +42,8 @@ export const MOB_CLASSES = {
   HEALER: { id: 'healer', name: 'Curandeiro', icon: '💚' }
 };
 
+
+
 // Helper para sortear raridade
 const getRarity = () => {
   const totalWeight = RARITIES_MOBS.reduce((acc, r) => acc + r.rarities, 0);
@@ -85,7 +87,9 @@ export const generateArenaMobs = (count, tileData) => {
       color: COLORS_MOBS[rarity.id],
       borderColor: rarity.borderColor,
       label: `M${i + 1}`,
-      skills: [] // Preparado para receber skills
+      skills: [], // Preparado para receber skills
+      turnCount: 0,
+      shield: mobClass.id === 'tank' ? Math.floor((tileData?.mobHp || 30) * 0.3) : 0
     });
 
     xOffset += 100;
@@ -131,7 +135,9 @@ export const generateArenaMobs = (count, tileData) => {
       borderColor: rarity.borderColor,
       label: 'BOSS',
       isBoss: true,
-      skills: []
+      skills: [],
+      turnCount: 0,
+      shield: mobClass.id === 'tank' ? Math.floor(((tileData?.mobHp || 30) * 2) * 0.3) : 0
     });
   } else {
     // Define o último mob da lista como Boss se não for bônus

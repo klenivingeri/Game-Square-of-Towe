@@ -208,21 +208,46 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
           // Adiciona o bônus temporário de ataque
           const totalAttack = playerRef.current.attributes.attack + state.tempAttackBonus;
           const damage = isCrit ? totalAttack * 2 : totalAttack;
+          
+          // HABILIDADE: WARRIOR (Esquiva)
+          // Tem possibilidade de se esquivar de ataques
+          const isWarrior = activeMob.mobClass === 'warrior';
+          const dodged = isWarrior && Math.random() < 0.15; // 20% de chance
 
-          activeMob.hp -= damage;
-          activeMob.hit = 5; // Pisca branco por 5 frames
+          if (dodged) {
+            state.floatingTexts.push({
+              id: Date.now() + Math.random(),
+              x: activeMob.x + 10,
+              y: (activeMob.type === 'bonus' ? 190 : (activeMob.isBoss ? 140 : 170)) - 20,
+              text: "Esquiva",
+              color: '#3498db',
+              isCrit: false,
+              life: 50
+            });
+          } else {
+            // Lógica de Escudo do Mob (TANK)
+            let finalDamage = damage;
+            if (activeMob.shield > 0) {
+              const absorb = Math.min(activeMob.shield, finalDamage);
+              activeMob.shield -= absorb;
+              finalDamage -= absorb;
+            }
 
-          // Floating Text (Dano no Mob)
-          state.floatingTexts.push({
-            id: Date.now() + Math.random(),
-            x: activeMob.x + 10,
-            y: (activeMob.type === 'bonus' ? 190 : (activeMob.isBoss ? 140 : 170)) - 20,
-            text: damage,
-            color: isCrit ? '#f1c40f' : 'white',
-            isCrit: isCrit,
-            life: 50
-          });
+            activeMob.hp -= finalDamage;
+            activeMob.hit = 5; // Pisca branco por 5 frames
 
+            // Floating Text (Dano no Mob)
+            state.floatingTexts.push({
+              id: Date.now() + Math.random(),
+              x: activeMob.x + 10,
+              y: (activeMob.type === 'bonus' ? 190 : (activeMob.isBoss ? 140 : 170)) - 20,
+              text: finalDamage,
+              color: isCrit ? '#f1c40f' : 'white',
+              isCrit: isCrit,
+              life: 50
+            });
+          }
+          
           // Tocar som de impacto
           playSound(audioBase.hit);
 
@@ -236,34 +261,60 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
             activeMob.attack += 2; // Velocidade de ataque do mob (Ajustado)
             changed = true;
           } else {
-            // Mob Ataca
-            // Dano do mob reduzido pela defesa do player (mínimo de 1 de dano)
-            const baseDmg = activeMob.dmg || 5;
-            let mobDamage = Math.max(1, baseDmg - playerRef.current.attributes.defense);
+            // Mob Age (Ataca ou Cura)
+            activeMob.turnCount = (activeMob.turnCount || 0) + 1;
 
-            // Lógica do Escudo: Absorve dano antes da vida
-            if (state.playerShield > 0) {
-              const absorb = Math.min(state.playerShield, mobDamage);
-              state.playerShield -= absorb;
-              mobDamage -= absorb;
+            // HABILIDADE: HEALER (Cura a cada 3 turnos)
+            if (activeMob.mobClass === 'healer' && activeMob.turnCount % 3 === 0) {
+              const healAmount = Math.floor(activeMob.maxHp * 0.2);
+              activeMob.hp = Math.min(activeMob.maxHp, activeMob.hp + healAmount);
+              
+              state.floatingTexts.push({
+                id: Date.now() + Math.random(),
+                x: activeMob.x + 10,
+                y: 150,
+                text: `+${healAmount}`,
+                color: '#2ecc71',
+                isCrit: false,
+                life: 50
+              });
+            } else {
+              // Mob Ataca
+              // Dano do mob reduzido pela defesa do player (mínimo de 1 de dano)
+              const baseDmg = activeMob.dmg || 5;
+              let mobDamage = Math.max(1, baseDmg - playerRef.current.attributes.defense);
+
+              // HABILIDADE: ASSASSIN (Crítico)
+              let isMobCrit = false;
+              if (activeMob.mobClass === 'assassin' && Math.random() < 0.30) {
+                mobDamage *= 2;
+                isMobCrit = true;
+              }
+
+              // Lógica do Escudo: Absorve dano antes da vida
+              if (state.playerShield > 0) {
+                const absorb = Math.min(state.playerShield, mobDamage);
+                state.playerShield -= absorb;
+                mobDamage -= absorb;
+              }
+
+              state.playerHp -= mobDamage;
+              state.playerHit = 5; // Pisca branco por 5 frames
+
+              // Floating Text (Dano no Player)
+              state.floatingTexts.push({
+                id: Date.now() + Math.random(),
+                x: PLAYER_X + 10,
+                y: 150,
+                text: mobDamage,
+                color: isMobCrit ? '#e67e22' : '#e74c3c',
+                isCrit: isMobCrit,
+                life: 50
+              });
+
+              // Tocar som de impacto no player
+              playSound(audioBase.hit);
             }
-
-            state.playerHp -= mobDamage;
-            state.playerHit = 5; // Pisca branco por 5 frames
-
-            // Floating Text (Dano no Player)
-            state.floatingTexts.push({
-              id: Date.now() + Math.random(),
-              x: PLAYER_X + 10,
-              y: 150,
-              text: mobDamage,
-              color: '#e74c3c',
-              isCrit: false,
-              life: 50
-            });
-
-            // Tocar som de impacto no player
-            playSound(audioBase.hit);
 
             activeMob.attack = 0;
             changed = true;
@@ -494,6 +545,7 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
             hp={mob.hp}
             maxHp={mob.maxHp}
             classMob={mob.mobClassName}
+            shield={mob.shield}
             attackProgress={isCurrent && render.combat && !isBonus ? mob.attack : null}
             hit={mob.hit}
             label={mob.label}
@@ -659,7 +711,7 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
             opacity: opacity,
             transform: `scale(${scale})`
           }}>
-            -{Math.floor(ft.text)}
+            {typeof ft.text === 'number' ? `-${Math.floor(ft.text)}` : ft.text}
           </div>
         );
       })}
