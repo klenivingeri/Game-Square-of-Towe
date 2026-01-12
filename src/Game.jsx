@@ -59,7 +59,13 @@ export const Game = () => {
   // Carrega stats do localStorage ou usa padrão
   const [stats, setStats] = useState(() => {
     const saved = localStorage.getItem('rpg_stats');
-    return saved ? JSON.parse(saved) : { money: 100, gems: 0 };
+    const defaultStats = { money: 100, gems: 0, fichas: 30 };
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // Garante que 'fichas' exista para dados salvos mais antigos
+      return { ...defaultStats, ...parsed };
+    }
+    return defaultStats;
   });
 
   const lastPos = useRef({ x: pos.x, y: pos.y });
@@ -118,7 +124,7 @@ export const Game = () => {
   // Memoiza os itens de batalha para evitar recriação de array e re-render da Arena
   const battleItems = useMemo(() => {
     const selected = player.items.filter(i => selectedItemIds.includes(i.id));
-    
+
     // Preenche slots vazios com Poção de Vida Default (Metade do valor: 25)
     const defaults = [];
     const slotsNeeded = 2 - selected.length;
@@ -133,7 +139,7 @@ export const Game = () => {
         isDefault: true
       });
     }
-    
+
     return [...selected, ...defaults];
   }, [player.items, selectedItemIds]);
 
@@ -157,7 +163,7 @@ export const Game = () => {
     walkingAudioRef.current = new Audio(walkingSound);
     walkingAudioRef.current.loop = true;
     walkingAudioRef.current.playbackRate = 2.5; // Acelerado para acompanhar a movimentação
-    
+
     return () => {
       if (walkingAudioRef.current) walkingAudioRef.current.pause();
       walkingAudioRef.current = null;
@@ -173,7 +179,7 @@ export const Game = () => {
     lastPos.current = { x: startX, y: startY };
     velocityRef.current = { x: 0, y: 0 };
     scrollRef.current = mapHeight - screen.height;
-    
+
     if (progressBarRef.current) {
       progressBarRef.current.style.width = '0%';
       progressBarRef.current.style.background = 'cyan';
@@ -253,19 +259,37 @@ export const Game = () => {
       }
       setModalDropOpen(true);
     } else {
+      if (stats.fichas < 1) {
+        // Opcional: Adicionar um feedback visual/sonoro de que não há fichas
+        console.log("Sem fichas para entrar na dungeon!");
+        return; // Impede a entrada
+      }
+
       // Salva XP e Nível atuais para verificar vitória depois
       const startXp = playerRef.current.attributes.xp;
       const startLevel = playerRef.current.attributes.level;
       setMapInfo({ nivel, tension, mobHp, mobAtk, cRow, startXp, startLevel });
-      // Aqui entrará a sua lógica de batalha
-      setBattleState('setup');
-      // setSelectedItemIds([]); // Mantém a seleção anterior (Persistência)
-      setModalArenaOpen(true);
 
-      setStats(s => ({ ...s }));
+      // Deduz a ficha e abre o modal
+      setStats(s => ({ ...s, fichas: s.fichas - 1 }));
+      setBattleState('setup');
+      setModalArenaOpen(true);
     }
 
   };
+
+  useEffect(() => {
+    // Check if fichas have reached 0 or less
+    if (stats.fichas <= 0 && mapLevel !== 0) { // Ensure it only triggers if not already on map 0
+      console.log("Fichas esgotadas! Retornando ao mapa inicial e reabastecendo fichas.");
+      setStats(s => ({ ...s, fichas: 30 })); // Reset fichas
+      setMapLevel(0); // Return to map 0
+      setModalArenaOpen(false); // Close any open arena modal
+      setModalDropOpen(false); // Close any open drop modal
+      setModalPortalOpen(false); // Close any open portal modal
+      // Optionally, add a visual cue or a specific message to the user here.
+    }
+  }, [stats.fichas, mapLevel, setStats, setMapLevel, setModalArenaOpen, setModalDropOpen, setModalPortalOpen]);
 
   // Limpa itens selecionados que não existem mais no inventário (ex: usados em batalha)
   useEffect(() => {
@@ -275,7 +299,7 @@ export const Game = () => {
   useEffect(() => {
     const update = () => {
       // Configurações de Física (Deslizamento)
-      const ACCELERATION = 0.8;
+      const ACCELERATION = 0.2;
       const FRICTION = 0.92;
       const MAX_SPEED = 6;
       const STOP_THRESHOLD = 0.1;
@@ -356,11 +380,11 @@ export const Game = () => {
 
       // Checagem de Colisão com Portal
       if (portalVisibleRef.current) {
-        const portalHitBox = { 
-          x: (screen.width / 2) - 75, 
-          y: 100, 
-          w: 100, 
-          h: 100 
+        const portalHitBox = {
+          x: (screen.width / 2) - 75,
+          y: 100,
+          w: 100,
+          h: 100
         };
 
         if (newX < portalHitBox.x + portalHitBox.w && newX + playerSize > portalHitBox.x && newY < portalHitBox.y + portalHitBox.h && newY + playerSize > portalHitBox.y) {
@@ -551,6 +575,9 @@ export const Game = () => {
     setModalArenaOpen(false);
     setBattleState('none');
 
+    // Deduct 1 ficha when receding
+    setStats(s => ({ ...s, fichas: s.fichas - 1 }));
+
     // Verifica se foi uma vitória no topo do mapa (Linha 0)
     if (mapInfo.cRow === 0) {
       const current = playerRef.current;
@@ -562,7 +589,7 @@ export const Game = () => {
         setPortalVisible(true);
       }
     }
-  }, [mapInfo]);
+  }, [mapInfo, setStats]);
 
   const toggleItemSelection = (itemId) => {
     setSelectedItemIds(prev => {
@@ -707,7 +734,7 @@ export const Game = () => {
       </div>
       {/* HUD */}
       <ProgressBar progressBarRef={progressBarRef} />
-      <Perfil ROWS={ROWS} currentRow={currentRow} currentTileData={currentTileData} player={player} money={stats.money} gems={stats.gems} />
+      <Perfil ROWS={ROWS} currentRow={currentRow} currentTileData={currentTileData} player={player} money={stats.money} gems={stats.gems} fichas={stats.fichas} />
 
       {/* Modal de Drop (Mapa) */}
       <ModalArena isOpen={modalDropOpen} onClose={() => setModalDropOpen(false)} showX={true} compact={dropInfo?.type === 'item'}>
@@ -784,7 +811,6 @@ export const Game = () => {
                       background: isSelected ? 'rgba(0, 255, 255, 0.2)' : 'rgba(0,0,0,0.3)',
                       display: 'flex', justifyContent: 'center', alignItems: 'center',
                       fontSize: '24px', cursor: 'pointer',
-                      transform: isFocused ? 'scale(1.1)' : 'scale(1)',
                       boxShadow: isFocused ? '0 0 15px rgba(255,255,255,0.5)' : 'none',
                       position: 'relative'
                     }}
@@ -796,56 +822,65 @@ export const Game = () => {
               }) : <span style={{ color: '#666' }}>Nenhum item consumível.</span>}
             </div>
 
-            <div style={{ position: 'relative', height: '50px', display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: '30px' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '20px', marginTop: '30px' }}>
               <button
                 onClick={() => setBattleState('fighting')}
                 style={{
                   padding: '10px 40px',
                   background: '#e74c3c', color: 'white',
-                  border: setupFocusIndex === consumables.length ? '2px solid white' : 'none',
                   borderRadius: '5px', fontSize: '18px', cursor: 'pointer',
                   boxShadow: setupFocusIndex === consumables.length ? '0 0 20px white' : '0 0 10px #c0392b',
-                  transform: setupFocusIndex === consumables.length ? 'scale(1.1)' : 'scale(1)',
                   zIndex: 10
                 }}>
-                ENTRAR NA DUNGEON! {setupFocusIndex === consumables.length && <span style={{ fontSize: '12px' }}></span>}
+                ENTRAR NA DUNGEON!
               </button>
+              <button
+                onClick={handleCloseArena}
+                style={{
+                  padding: '10px 20px',
+                  background: '#7f8c8d', color: 'white',
+                  border: 'none',
+                  borderRadius: '5px', fontSize: '18px', cursor: 'pointer',
+                  boxShadow: '0 0 10px #7f8c8d'
+                }}>
+                RECUAR(-1 FICHA)
+              </button>
+            </div>
 
-              {/* Slots de Consumíveis (Lado Direito) */}
-              <div style={{ position: 'absolute', right: 0, top: 0, height: '100%', display: 'flex', gap: '10px' }}>
-                {[0, 1].map(slotIndex => {
-                  const itemId = selectedItemIds[slotIndex];
-                  const selectedItem = itemId ? consumables.find(i => i.id === itemId) : null;
-                  
-                  const item = selectedItem || {
-                    name: 'Poção de Vida',
-                    icon: '❤',
-                    value: 25,
-                    color: '#e74c3c',
-                    isDefault: true
-                  };
+            {/* Slots de Consumíveis (Lado Direito) */}
+            <div style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {[0, 1].map(slotIndex => {
+                const itemId = selectedItemIds[slotIndex];
+                const selectedItem = itemId ? consumables.find(i => i.id === itemId) : null;
 
-                  return (
-                    <div key={slotIndex} style={{
-                      width: '50px', height: '50px',
-                      border: selectedItem ? '1px solid #fff' : '1px dashed #555',
-                      borderRadius: '8px',
-                      background: 'rgba(0,0,0,0.5)',
-                      display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
-                      position: 'relative',
-                      opacity: selectedItem ? 1 : 0.8
-                    }}>
-                      <>
-                        <div style={{ fontSize: '20px' }}>{item.icon}</div>
-                        <div style={{ fontSize: '10px', color: 'white', fontWeight: 'bold', position: 'absolute', bottom: '2px', right: '2px', textShadow: '0 0 2px black' }}>
-                          {item.value || (item.stats ? Object.values(item.stats)[0] : '?')}
-                        </div>
-                        {item.isDefault && <div style={{ position: 'absolute', top: -2, right: -2, width: '6px', height: '6px', background: '#e74c3c', borderRadius: '50%' }} />}
-                      </>
-                    </div>
-                  );
-                })}
-              </div>
+                const item = selectedItem || {
+                  name: 'Poção de Vida',
+                  icon: '❤',
+                  value: 25,
+                  color: '#e74c3c',
+                  isDefault: true
+                };
+
+                return (
+                  <div key={slotIndex} style={{
+                    width: '50px', height: '50px',
+                    border: selectedItem ? '1px solid #fff' : '1px dashed #555',
+                    borderRadius: '8px',
+                    background: 'rgba(0,0,0,0.5)',
+                    display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
+                    position: 'relative',
+                    opacity: selectedItem ? 1 : 0.8
+                  }}>
+                    <>
+                      <div style={{ fontSize: '20px' }}>{item.icon}</div>
+                      <div style={{ fontSize: '10px', color: 'white', fontWeight: 'bold', position: 'absolute', bottom: '2px', right: '2px', textShadow: '0 0 2px black' }}>
+                        {item.value || (item.stats ? Object.values(item.stats)[0] : '?')}
+                      </div>
+                      {item.isDefault && <div style={{ position: 'absolute', top: -2, right: -2, width: '6px', height: '6px', background: '#e74c3c', borderRadius: '50%' }} />}
+                    </>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}

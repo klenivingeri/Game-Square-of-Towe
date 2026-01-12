@@ -22,7 +22,7 @@ const BONUS_POOL = [
   { id: 'debuff_healer', name: 'Maldição', description: '-10% Vida (Curandeiros)', type: 'debuff_class', targetClass: 'healer', value: 0.1, color: '#27ae60', icon: '💚' },
 ];
 
-export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClose, battleItems }) => {
+export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClose, battleItems, mapLevel, defeatedBosses, setDefeatedBosses }) => {
   // Configurações da Arena
   const { PLAYER: PLAYER_SIZE, MOB: MOB_SIZE, ELITE: ELITE_SIZE, BOSS: BOSS_SIZE, BONUS: BONUS_SIZE } = SIZES;
   const PLAYER_X = 140; // Posição fixa do player
@@ -163,6 +163,14 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
         state.active = false;
         state.result = 'win';
         setRender({ ...state });
+
+        // Recompensa por Vitória de Boss: Adiciona 3 fichas se for a primeira vez.
+        const isMapBossBattle = currentTileData.cRow === 0;
+        if (isMapBossBattle && !defeatedBosses.includes(mapLevel)) {
+          setStats(s => ({ ...s, fichas: s.fichas + 3 }));
+          setDefeatedBosses(prev => [...prev, mapLevel]);
+        }
+        
         setPlayer(prev => ({
           ...prev,
           attributes: { ...prev.attributes, hp: prev.attributes.maxHp }
@@ -413,6 +421,10 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
         state.active = false;
         state.result = 'loss';
         changed = true;
+
+        // Penalidade de derrota: Subtrai 1 ficha adicional.
+        setStats(s => ({ ...s, fichas: Math.max(0, s.fichas - 1) }));
+        
         setPlayer(prev => ({
           ...prev,
           attributes: { ...prev.attributes, hp: prev.attributes.maxHp }
