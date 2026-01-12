@@ -2,16 +2,28 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { RARITIES, BASE_ITEMS, ItemCard, addRandomStats } from './StateDriven/Items';
 
 export const Shop = ({ money, gems, player, setPlayer, setStats }) => {
-  const [shopItems, setShopItems] = useState([]);
-  const [shopLevel, setShopLevel] = useState(1);
+  const [shopItems, setShopItems] = useState(() => {
+    const saved = localStorage.getItem('rpg_shop_items');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [shopLevel, setShopLevel] = useState(() => {
+    const saved = localStorage.getItem('rpg_shop_level');
+    return saved ? parseInt(saved, 10) : 1;
+  });
   const [isAuto, setIsAuto] = useState(false);
   const [targetRarity, setTargetRarity] = useState(''); // ID da raridade alvo
-  const [lastRefresh, setLastRefresh] = useState(Date.now());
+  const [lastRefresh, setLastRefresh] = useState(() => {
+    const saved = localStorage.getItem('rpg_shop_last_refresh');
+    return saved ? parseInt(saved, 10) : 0;
+  });
+  const [timeString, setTimeString] = useState('--:--');
 
   // Custos
-  const REFRESH_COST = 10;
+  const REFRESH_COST_BASE = 20;
+  const refreshCost = Math.floor(REFRESH_COST_BASE * Math.pow(1.8, shopLevel - 1));
   const UPGRADE_COST_BASE = 100;
   const upgradeCost = Math.floor(UPGRADE_COST_BASE * Math.pow(1.5, shopLevel - 1));
+  const REFRESH_INTERVAL = 30 * 60 * 1000; // 30 minutos
 
   // Função para calcular pesos de raridade baseado no nível da loja
   const getRarityWeights = useCallback((level) => {
@@ -50,7 +62,7 @@ export const Shop = ({ money, gems, player, setPlayer, setStats }) => {
   const generateItems = useCallback(() => {
     const weights = getRarityWeights(shopLevel);
     const newItems = [];
-    const itemCount = 4 + Math.floor(shopLevel / 3); // 4 itens base + 1 a cada 3 níveis
+    const itemCount = 4;
 
     for (let i = 0; i < itemCount; i++) {
       const rarity = pickRarity(weights);
@@ -61,18 +73,19 @@ export const Shop = ({ money, gems, player, setPlayer, setStats }) => {
 
       let stats = Object.entries(baseItem.baseStats).reduce((acc, [key, val]) => {
         // Aplica multiplicador da raridade e a variância
-        let finalVal = val * rarity.multiplier * variance;
-        // Garante valor mínimo de 1 se o base for > 0
-        finalVal = val > 0 ? Math.max(1, Math.round(finalVal)) : Math.round(finalVal);
+        let finalVal = val > 0 ? Math.max(1, Math.round(val * rarity.multiplier * variance)) : 0;
         acc[key] = finalVal;
         return acc;
       }, {});
 
-      // Adiciona atributos aleatórios (1 ou 2) usando a função do Items.jsx
-      stats = addRandomStats(stats, rarity.multiplier);
+      // Adiciona atributos extras baseado no tier da raridade
+      const rarityIndex = RARITIES.findIndex(r => r.id === rarity.id);
+      const extraStatsCount = Math.floor(rarityIndex / 1.5) + 1;
+      stats = addRandomStats(stats, rarity.multiplier, extraStatsCount);
 
-      // Preço baseado na raridade e qualidade (variance)
-      const price = Math.floor(20 * rarity.multiplier * variance);
+      // Preço baseado na raridade (priceMult) e qualidade (variance)
+      const basePrice = 20;
+      const price = Math.floor(basePrice * rarity.priceMult * variance);
 
       newItems.push({
         uniqueId: `${baseItem.id}-${Date.now()}-${i}`,
@@ -88,14 +101,14 @@ export const Shop = ({ money, gems, player, setPlayer, setStats }) => {
 
   // Ação de Atualizar (Refresh)
   const handleRefresh = useCallback((isAutoCall = false) => {
-    if (money < REFRESH_COST) {
+    if (money < refreshCost) {
       if (!isAutoCall) alert("Ouro insuficiente para atualizar!");
       else setIsAuto(false);
       return;
     }
 
     if (setStats) {
-      setStats(prev => ({ ...prev, money: prev.money - REFRESH_COST }));
+      setStats(prev => ({ ...prev, money: prev.money - refreshCost }));
     }
 
     const newItems = generateItems();
@@ -109,7 +122,7 @@ export const Shop = ({ money, gems, player, setPlayer, setStats }) => {
         setIsAuto(false); // Para o auto
       }
     }
-  }, [money, generateItems, targetRarity, setStats]);
+  }, [money, generateItems, targetRarity, setStats, refreshCost]);
 
   // Efeito para o Auto Refresh
   useEffect(() => {
@@ -122,12 +135,34 @@ export const Shop = ({ money, gems, player, setPlayer, setStats }) => {
     return () => clearInterval(interval);
   }, [isAuto, handleRefresh]);
 
-  // Inicializa a loja se estiver vazia
+  // Salva estados no localStorage sempre que mudarem
   useEffect(() => {
-    if (shopItems.length === 0) {
-      setShopItems(generateItems());
-    }
-  }, []);
+    localStorage.setItem('rpg_shop_level', shopLevel);
+    localStorage.setItem('rpg_shop_items', JSON.stringify(shopItems));
+    localStorage.setItem('rpg_shop_last_refresh', lastRefresh.toString());
+  }, [shopLevel, shopItems, lastRefresh]);
+
+  // Timer de 30 minutos para refresh automático
+  useEffect(() => {
+    const tick = () => {
+      const now = Date.now();
+      const elapsed = now - lastRefresh;
+      const remaining = Math.max(0, REFRESH_INTERVAL - elapsed);
+
+      if (remaining === 0) {
+        const newItems = generateItems();
+        setShopItems(newItems);
+        setLastRefresh(now);
+      } else {
+        const m = Math.floor(remaining / 60000);
+        const s = Math.floor((remaining % 60000) / 1000);
+        setTimeString(`${m}:${s < 10 ? '0' : ''}${s}`);
+      }
+    };
+    tick(); // Executa imediatamente
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [lastRefresh, generateItems]);
 
   const handleUpgrade = () => {
     if (money >= upgradeCost) {
@@ -173,8 +208,33 @@ export const Shop = ({ money, gems, player, setPlayer, setStats }) => {
         </button>
       </div>
 
+      {/* Grade de Itens */}
+      <div style={{  marginBottom:'5px',display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '10px', overflowY: 'auto', paddingRight: '5px' }}>
+        {shopItems.map((item) => (
+          <ItemCard key={item.uniqueId} item={item}>
+            <button
+              onClick={() => handleBuy(item)}
+              style={{
+                width: '100%', padding: '5px',
+                background: money >= item.price ? '#f1c40f' : '#555',
+                color: money >= item.price ? 'black' : '#aaa',
+                border: 'none', borderRadius: '4px', cursor: money >= item.price ? 'pointer' : 'not-allowed',
+                fontWeight: 'bold', fontSize: '12px',
+                marginTop: 'auto'
+              }}>
+              Comprar ({item.price} 💰)
+            </button>
+          </ItemCard>
+        ))}
+      </div>
+      
       {/* Controles de Refresh e Auto */}
       <div style={{ display: 'flex', gap: '10px', marginBottom: '15px', alignItems: 'center', background: 'rgba(0,0,0,0.2)', padding: '5px', borderRadius: '5px' }}>
+        
+        <div style={{ fontFamily: 'monospace', fontSize: '14px', color: '#f1c40f', minWidth: '45px', textAlign: 'center' }}>
+          {timeString}
+        </div>
+
         <button
           onClick={() => handleRefresh(false)}
           disabled={isAuto}
@@ -182,11 +242,10 @@ export const Shop = ({ money, gems, player, setPlayer, setStats }) => {
             flex: 1, padding: '8px', background: '#e67e22', border: 'none', borderRadius: '4px', color: 'white', cursor: 'pointer', fontWeight: 'bold',
             opacity: isAuto ? 0.5 : 1
           }}>
-          Atualizar (-{REFRESH_COST} 💰)
+          Atualizar (-{refreshCost} 💰)
         </button>
 
         <div style={{ display: 'flex', flexDirection: 'row', flex: 1, gap: '5px' }}>
-
 
           <button
             onClick={() => {
@@ -197,10 +256,13 @@ export const Shop = ({ money, gems, player, setPlayer, setStats }) => {
                 handleRefresh(true);
               }
             }}
+            disabled={!targetRarity}
             style={{
-              flex: 1, padding: '11px', background: isAuto ? '#c0392b' : '#3498db', border: 'none', borderRadius: '4px', color: 'white', cursor: 'pointer', fontSize: '12px'
+              flex: 1, padding: '11px', 
+              background: isAuto ? '#c0392b' : (!targetRarity ? '#555' : '#3498db'), 
+              border: 'none', borderRadius: '4px', color: 'white', cursor: !targetRarity ? 'not-allowed' : 'pointer', fontSize: '12px'
             }}>
-            {isAuto ? 'PARAR AUTO' : `AUTO (-${REFRESH_COST} 💰)`}
+            {isAuto ? 'PARAR AUTO' : `AUTO (-${refreshCost} 💰)`}
           </button>
 
           <select
@@ -220,26 +282,6 @@ export const Shop = ({ money, gems, player, setPlayer, setStats }) => {
             })}
           </select>
         </div>
-      </div>
-
-      {/* Grade de Itens */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '10px', overflowY: 'auto', paddingRight: '5px' }}>
-        {shopItems.map((item) => (
-          <ItemCard key={item.uniqueId} item={item}>
-            <button
-              onClick={() => handleBuy(item)}
-              style={{
-                width: '100%', padding: '5px',
-                background: money >= item.price ? '#f1c40f' : '#555',
-                color: money >= item.price ? 'black' : '#aaa',
-                border: 'none', borderRadius: '4px', cursor: money >= item.price ? 'pointer' : 'not-allowed',
-                fontWeight: 'bold', fontSize: '12px',
-                marginTop: 'auto'
-              }}>
-              Comprar ({item.price} 💰)
-            </button>
-          </ItemCard>
-        ))}
       </div>
     </div>
   );

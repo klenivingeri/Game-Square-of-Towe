@@ -13,7 +13,7 @@ const icons = {
   ),
   close: (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-      <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z" />
+      <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z" />
     </svg>
   ),
   inventory: (
@@ -58,9 +58,9 @@ export const Nav = memo(({ player, setPlayer, money, gems, setStats, activeModal
       alignItems: 'center'
     }}>
       <style>{`
-        @keyframes slideLeft {
-          from { opacity: 0; transform: translateX(20px); }
-          to { opacity: 1; transform: translateX(0); }
+        @keyframes slideUp {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
         }
       `}</style>
 
@@ -89,13 +89,14 @@ export const Nav = memo(({ player, setPlayer, money, gems, setStats, activeModal
       ) : (
         <div style={{
           display: 'flex',
+          flexDirection: 'column-reverse',
           alignItems: 'center',
           background: 'rgba(0, 0, 0, 0.9)',
           padding: '10px',
           borderRadius: '8px',
           border: '1px solid #444',
           gap: '8px',
-          animation: 'slideLeft 0.3s ease-out',
+          animation: 'slideUp 0.3s ease-out',
           boxShadow: '0 5px 15px rgba(0,0,0,0.5)'
         }}>
           {/* Seta para encolher (Lado Esquerdo) */}
@@ -107,10 +108,11 @@ export const Nav = memo(({ player, setPlayer, money, gems, setStats, activeModal
               color: 'cyan',
               fontSize: '24px',
               cursor: 'pointer',
-              padding: '0 10px',
+              padding: '5px 0',
               display: 'flex',
               alignItems: 'center',
-              height: '100%'
+              justifyContent: 'center',
+              width: '100%'
             }}
             title="Fechar Menu"
           >

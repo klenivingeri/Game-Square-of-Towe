@@ -2,13 +2,13 @@ import React from 'react';
 
 // Definição das Raridades e suas Cores/Multiplicadores
 export const RARITIES = [
-  { id: 'common', name: 'Comum', color: '#95a5a6', multiplier: 1 },       // Cinza
-  { id: 'uncommon', name: 'Incomum', color: '#2ecc71', multiplier: 1.5 }, // Verde
-  { id: 'rare', name: 'Raro', color: '#3498db', multiplier: 2 },          // Azul
-  { id: 'heroic', name: 'Heroico', color: '#9b59b6', multiplier: 3 },     // Roxo
-  { id: 'legendary', name: 'Lendário', color: '#f1c40f', multiplier: 5 }, // Amarelo
-  { id: 'mythic', name: 'Mítico', color: '#e67e22', multiplier: 8 },      // Laranja
-  { id: 'immortal', name: 'Imortal', color: '#e74c3c', multiplier: 12 },  // Vermelho
+  { id: 'common', name: 'Comum', color: '#95a5a6', multiplier: 1.0, priceMult: 1 },
+  { id: 'uncommon', name: 'Incomum', color: '#2ecc71', multiplier: 1.5, priceMult: 2 },
+  { id: 'rare', name: 'Raro', color: '#3498db', multiplier: 2.2, priceMult: 4 },
+  { id: 'heroic', name: 'Heroico', color: '#9b59b6', multiplier: 3.2, priceMult: 8 },
+  { id: 'legendary', name: 'Lendário', color: '#f1c40f', multiplier: 4.8, priceMult: 16 },
+  { id: 'mythic', name: 'Mítico', color: '#e67e22', multiplier: 7.0, priceMult: 32 },
+  { id: 'immortal', name: 'Imortal', color: '#e74c3c', multiplier: 10.0, priceMult: 64 },
 ];
 
 // Definição dos Itens Base (Sempre os mesmos, mudam com a raridade)
@@ -30,7 +30,6 @@ export const BASE_CONSUMABLES = [
   { id: 'potion_heal', name: 'Poção de Vida', type: 'heal', icon: '❤', baseStats: { heal: 50 } },
   { id: 'potion_shield', name: 'Poção de Escudo', type: 'shield', icon: '🛡️', baseStats: { shield: 50 } },
   { id: 'potion_crit', name: 'Poção de Crítico', type: 'crit', icon: '🎯', baseStats: { crit: 15 } },
-  { id: 'potion_speed', name: 'Poção de Velocidade', type: 'speed', icon: '⚡', baseStats: { speed: 5 } },
   { id: 'potion_damage', name: 'Poção de Dano', type: 'damage', icon: '⚔️', baseStats: { damage: 10 } },
 ];
 
@@ -38,18 +37,12 @@ export const BASE_CONSUMABLES = [
 export const ATTRIBUTES_POOL = ['hp', 'attack', 'defense', 'shield', 'critChance'];
 
 // Função para adicionar 1 ou 2 atributos aleatórios aos stats do item
-export const addRandomStats = (stats, multiplier = 1) => {
+export const addRandomStats = (stats, multiplier = 1, count = null) => {
   const newStats = { ...stats };
-  const count = Math.random() < 0.2 ? 2 : 1; // 20% de chance de ter 2 atributos
+  const finalCount = count !== null ? count : (Math.random() < 0.2 ? 2 : 1);
 
-  for (let i = 0; i < count; i++) {
-    let attr;
-    // 5% de chance de cair speed, pois é muito forte
-    if (Math.random() < 0.05) {
-      attr = 'speed';
-    } else {
-      attr = ATTRIBUTES_POOL[Math.floor(Math.random() * ATTRIBUTES_POOL.length)];
-    }
+  for (let i = 0; i < finalCount; i++) {
+    let attr = ATTRIBUTES_POOL[Math.floor(Math.random() * ATTRIBUTES_POOL.length)];
     const value = Math.ceil((Math.floor(Math.random() * 5) + 1) * multiplier);
     newStats[attr] = (newStats[attr] || 0) + value;
   }
