@@ -43,38 +43,54 @@ export const Game = () => {
   const lastParticlePos = useRef({ x: pos.x, y: pos.y });
 
   const [inventory, setInventory] = useState([]);
-  const [stats, setStats] = useState({ money: 100, gems: 0 });
+
+  // Carrega stats do localStorage ou usa padrão
+  const [stats, setStats] = useState(() => {
+    const saved = localStorage.getItem('rpg_stats');
+    return saved ? JSON.parse(saved) : { money: 100, gems: 0 };
+  });
+
   const lastPos = useRef({ x: pos.x, y: pos.y });
   const [battleState, setBattleState] = useState('none'); // 'none', 'setup', 'fighting'
   const [selectedItemIds, setSelectedItemIds] = useState([]);
   const [setupFocusIndex, setSetupFocusIndex] = useState(0);
 
   // --- ESTADO DO JOGADOR (ATRIBUTOS E EQUIPAMENTOS) ---
-  const [player, setPlayer] = useState({
-    attributes: {
-      level: 1,
-      xp: 0,
-      maxXp: 100,
-      hp: 100,
-      maxHp: 100,
-      attack: 10,      // Dano base
-      speed: 3,        // Velocidade de enchimento da barra
-      defense: 2,      // Redução de dano
-      shield: 2,
-      critChance: 10,  // Porcentagem (0-100)
-    },
-    equipment: {
-      head: null,   // Cabeça
-      chest: null,  // Peito
-      arms: null,   // Braço
-      pants: null,  // Calça
-      boots: null,  // Botas
-      weapon: null, // Espada
-      shield: null  // Escudo
-    },
-    items: [],      // Consumíveis
-    cosmetics: []   // Cosméticos
+  // Carrega player do localStorage ou usa padrão
+  const [player, setPlayer] = useState(() => {
+    const saved = localStorage.getItem('rpg_player');
+    return saved ? JSON.parse(saved) : {
+      attributes: {
+        level: 1,
+        xp: 0,
+        maxXp: 100,
+        hp: 100,
+        maxHp: 100,
+        attack: 10,      // Dano base
+        speed: 3,        // Velocidade de enchimento da barra
+        defense: 2,      // Redução de dano
+        shield: 2,
+        critChance: 10,  // Porcentagem (0-100)
+      },
+      equipment: {
+        head: null,   // Cabeça
+        chest: null,  // Peito
+        arms: null,   // Braço
+        pants: null,  // Calça
+        boots: null,  // Botas
+        weapon: null, // Espada
+        shield: null  // Escudo
+      },
+      items: [],      // Consumíveis
+      cosmetics: []   // Cosméticos
+    };
   });
+
+  // Salva no localStorage sempre que player ou stats mudarem
+  useEffect(() => {
+    localStorage.setItem('rpg_player', JSON.stringify(player));
+    localStorage.setItem('rpg_stats', JSON.stringify(stats));
+  }, [player, stats]);
 
   // Filtra apenas itens consumíveis (que possuem a propriedade 'value') para a batalha
   const consumables = useMemo(() => {
