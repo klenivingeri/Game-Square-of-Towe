@@ -26,13 +26,6 @@ export const COLORS_MOBS = {
   immortal: '#3b1616',
 };
 
-export const MOB_CATEGORIES = {
-  COMMON: { name: 'Comum', color: null }, // Cor gerada dinamicamente
-  ELITE: { name: 'Elite', color: '#9b59b6' }, // Roxo
-  LEADER: { name: 'Líder', color: '#c0392b' }, // Vermelho Escuro
-  BONUS: { name: 'Bônus', color: 'gold' }
-};
-
 export const MOB_CLASSES = {
   WARRIOR: { id: 'warrior', name: 'Guerreiro', icon: '⚔️' },
   TANK: { id: 'tank', name: 'Tanque', icon: '🛡️' },
@@ -55,7 +48,7 @@ const getRarity = () => {
   return RARITIES_MOBS[0];
 };
 
-export const generateArenaMobs = (count, tileData) => {
+export const generateArenaMobs = (count, tileData, isMapBoss = false) => {
   const initialMobs = [];
   let xOffset = 280;
   let mobCounter = 0;
@@ -163,7 +156,6 @@ export const generateArenaMobs = (count, tileData) => {
     if (level >= 3 && level <= 12) {
       lastEnemy.category = 'ELITE';
       lastEnemy.label = 'ELITE';
-      // lastEnemy.color = MOB_CATEGORIES.ELITE.color; // Mantém a cor da raridade
       lastEnemy.hp = (tileData?.mobHp || 30) * 2.5; // Elite tem mais vida
       lastEnemy.maxHp = lastEnemy.hp;
       lastEnemy.dmg = (tileData?.mobAtk || 5) * 1.5;
@@ -175,15 +167,65 @@ export const generateArenaMobs = (count, tileData) => {
       lastEnemy.maxHp *= 2;
     }
 
-    // Regra: Leader aparece SOMENTE no grid 12 com 50% de chance
-    if (level === 12 && Math.random() < 0.5) {
-      lastEnemy.category = 'LEADER';
-      lastEnemy.label = 'LÍDER';
-      // lastEnemy.color = MOB_CATEGORIES.LEADER.color; // Mantém a cor da raridade
-      lastEnemy.hp = (tileData?.mobHp || 30) * 4; // Leader tem muita vida
-      lastEnemy.maxHp = lastEnemy.hp;
-      lastEnemy.dmg = (tileData?.mobAtk || 5) * 2;
-      lastEnemy.dropsKey = true; // Dropa a chave
+    // Regra: Boss do Mapa (Dropa Chave)
+    if (isMapBoss) {
+      const rarity = getRarity();
+      const randomClassKey = classKeys[Math.floor(Math.random() * classKeys.length)];
+      const mobClass = MOB_CLASSES[randomClassKey];
+
+      const mapBoss = {
+        id: `mob-boss-map`,
+        type: 'enemy',
+        category: 'BOSS',
+        mobClass: mobClass.id,
+        mobClassName: mobClass.name,
+        icon: '👹',
+        hp: (tileData?.mobHp || 30) * 5,
+        maxHp: (tileData?.mobHp || 30) * 5,
+        dmg: (tileData?.mobAtk || 5) * 2.5,
+        attack: 0,
+        hit: 0,
+        x: lastEnemy.x + 120,
+        color: COLORS_MOBS[rarity.id],
+        borderColor: 'gold',
+        label: 'BOSS',
+        isBoss: true,
+        dropsKey: true,
+        skills: [],
+        turnCount: 0,
+        shield: mobClass.id === 'tank' ? Math.floor(((tileData?.mobHp || 30) * 5) * 0.3) : 0
+      };
+      initialMobs.push(mapBoss);
+    } else if (level === 12 && Math.random() < 0.5) {
+      // Regra: Leader aparece SOMENTE no grid 12 com 50% de chance (se não for Boss de Mapa garantido)
+      const rarity = getRarity();
+      const randomClassKey = classKeys[Math.floor(Math.random() * classKeys.length)];
+      const mobClass = MOB_CLASSES[randomClassKey];
+
+      const leaderMob = {
+        id: `mob-leader`,
+        type: 'enemy',
+        category: 'LEADER',
+        mobClass: mobClass.id,
+        mobClassName: mobClass.name,
+        icon: mobClass.icon,
+        hp: (tileData?.mobHp || 30) * 4,
+        maxHp: (tileData?.mobHp || 30) * 4,
+        dmg: (tileData?.mobAtk || 5) * 2,
+        attack: 0,
+        hit: 0,
+        x: lastEnemy.x + 100,
+        color: COLORS_MOBS[rarity.id],
+        borderColor: rarity.borderColor,
+        label: 'LÍDER',
+        isBoss: true,
+        dropsKey: true,
+        skills: [],
+        turnCount: 0,
+        shield: mobClass.id === 'tank' ? Math.floor(((tileData?.mobHp || 30) * 4) * 0.3) : 0
+      };
+
+      initialMobs.push(leaderMob);
     }
   }
 

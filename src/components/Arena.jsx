@@ -17,7 +17,7 @@ const BONUS_POOL = [
 
 export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClose, battleItems }) => {
   // Configurações da Arena
-  const { PLAYER: PLAYER_SIZE, MOB: MOB_SIZE, BOSS: BOSS_SIZE, BONUS: BONUS_SIZE } = SIZES;
+  const { PLAYER: PLAYER_SIZE, MOB: MOB_SIZE, ELITE: ELITE_SIZE, BOSS: BOSS_SIZE, BONUS: BONUS_SIZE } = SIZES;
   const PLAYER_X = 30; // Posição fixa do player
 
   // Estado mutável do jogo (refs para performance no loop)
@@ -174,7 +174,8 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
         } else {
           // O mob da frente é o index - 1
           const prevMob = state.mobs[index - 1];
-          const prevSize = prevMob.type === 'bonus' ? BONUS_SIZE : (prevMob.isBoss ? BOSS_SIZE : MOB_SIZE);
+          const prevIsElite = prevMob.category === 'ELITE';
+          const prevSize = prevMob.type === 'bonus' ? BONUS_SIZE : (prevIsElite ? ELITE_SIZE : (prevMob.isBoss ? BOSS_SIZE : MOB_SIZE));
           targetX = prevMob.x + prevSize + 50;
         }
 
@@ -551,7 +552,8 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
         const isCurrent = index === render.currentMobIndex;
         const isBonus = mob.type === 'bonus';
         const isBoss = !!mob.isBoss;
-        const size = isBonus ? BONUS_SIZE : (isBoss ? BOSS_SIZE : MOB_SIZE);
+        const isElite = mob.category === 'ELITE';
+        const size = isBonus ? BONUS_SIZE : (isElite ? ELITE_SIZE : (isBoss ? BOSS_SIZE : MOB_SIZE));
 
         // Lógica de visibilidade da fila (apenas os 5 primeiros visíveis)
         const relativeIndex = index - render.currentMobIndex;
@@ -561,7 +563,7 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
           <BattleEntity
             key={mob.id}
             x={mob.x}
-            y={isBonus ? 190 : (isBoss ? 140 : 170)}
+            y={220 - size}
             size={size}
             color={mob.color}
             borderColor={mob.borderColor}
@@ -585,7 +587,7 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
         position: 'absolute',
         bottom: '80px',
         width: '100%',
-        height: '2px',
+        height: '1px',
         background: '#666'
       }} />
 

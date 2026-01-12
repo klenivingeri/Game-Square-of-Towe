@@ -36,6 +36,7 @@ export const BattleEntity = memo(({
       background: bgColor,
       border: `1px solid ${borderColor || color || 'black'}`,
       transform,
+      transformOrigin: 'bottom',
       opacity,
       boxShadow: `0 0 15px ${shadowColor}`,
       display: 'flex',
@@ -90,7 +91,7 @@ export const BattleEntity = memo(({
       {!isBonus && (
         <div style={{
           position: 'absolute',
-          bottom: '-16px',
+          bottom: '-17px',
           left: -1,
           width: '100%',
           height: '12px',

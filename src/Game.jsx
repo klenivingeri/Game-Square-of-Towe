@@ -122,7 +122,7 @@ export const Game = () => {
 
   // Controle de Play/Pause do som de andar
   useEffect(() => {
-    if (isMoving) walkingAudioRef.current.play().catch(() => {});
+    if (isMoving) walkingAudioRef.current.play().catch(() => { });
     else walkingAudioRef.current.pause();
   }, [isMoving]);
 
@@ -157,7 +157,7 @@ export const Game = () => {
         setStats(s => ({ ...s, money: s.money + goldAmount }));
         msg = `+${goldAmount} Ouro`;
         icon = '💰';
-        new Audio(coinSound).play().catch(() => {});
+        new Audio(coinSound).play().catch(() => { });
         setDropInfo({ msg, icon });
       } else if (dropRoll < 0.60) {
         // 25% Joias
@@ -165,7 +165,7 @@ export const Game = () => {
         setStats(s => ({ ...s, gems: s.gems + gemsAmount }));
         msg = `+${gemsAmount} Joia(s)`;
         icon = '💎';
-        new Audio(jewelSound).play().catch(() => {});
+        new Audio(jewelSound).play().catch(() => { });
         setDropInfo({ msg, icon });
       } else {
         // Consumível
@@ -195,7 +195,7 @@ export const Game = () => {
       setBattleState('setup');
       // setSelectedItemIds([]); // Mantém a seleção anterior (Persistência)
       setModalArenaOpen(true);
-      
+
       setStats(s => ({ ...s }));
     }
 
@@ -477,20 +477,20 @@ export const Game = () => {
   }, [modalArenaOpen, battleState, setupFocusIndex, consumables, toggleItemSelection]);
 
   return (
-    <div 
+    <div
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
       style={{
-      position: 'fixed', // Fixa o container na tela, ignorando margens do body
-      top: 0,
-      left: 0,
-      width: '100%',
-      height: '100%',
-      overflow: 'hidden',
-      background: '#000',
-      touchAction: 'none' // Impede gestos de rolagem/zoom no mobile
-    }}>
+        position: 'fixed', // Fixa o container na tela, ignorando margens do body
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        overflow: 'hidden',
+        background: '#000',
+        touchAction: 'none' // Impede gestos de rolagem/zoom no mobile
+      }}>
 
       <style>{`
         @keyframes fadeOut {
@@ -507,17 +507,17 @@ export const Game = () => {
       `}</style>
 
       {/* CONTAINER DO MAPA */}
-      <div 
+      <div
         ref={mapContainerRef}
         style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        width: '100%',
-        height: mapHeight,
-        zIndex: 0, // Garante que o mapa e o player fiquem em uma camada abaixo da UI
-        willChange: 'transform',
-      }}>
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: mapHeight,
+          zIndex: 0, // Garante que o mapa e o player fiquem em uma camada abaixo da UI
+          willChange: 'transform',
+        }}>
 
         {mapTiles}
 
@@ -548,116 +548,137 @@ export const Game = () => {
           animation: isMoving ? 'waddle 0.2s infinite' : 'none',
         }} />
       </div>
-        {/* HUD */}
-        <ProgressBar progressBarRef={progressBarRef} />
-        <Perfil ROWS={ROWS} currentRow={currentRow} currentTileData={currentTileData} player={player} money={stats.money} gems={stats.gems} />
-        
-        {/* Modal de Drop (Mapa) */}
-        <ModalArena isOpen={modalDropOpen} onClose={() => setModalDropOpen(false)} showX={true} compact={dropInfo?.type === 'item'}>
-          <div style={{ textAlign: 'center', padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            {dropInfo?.type === 'item' && dropInfo.data ? (
-              <>
-                <h2 style={{ color: 'cyan', margin: '0 0 15px 0' }}>Item Encontrado!</h2>
-                <ItemCard item={dropInfo.data} />
-              </>
-            ) : (
-              <>
-                <div style={{ fontSize: '40px', marginBottom: '10px' }}>{dropInfo?.icon}</div>
-                <h2 style={{ color: 'cyan', margin: '0 0 10px 0' }}>Encontrado!</h2>
-                <p style={{ fontSize: '18px', color: 'white' }}>{dropInfo?.msg}</p>
-              </>
-            )}
-            <button 
-              onClick={() => setModalDropOpen(false)}
-              style={{ marginTop: '20px', padding: '8px 20px', background: '#3498db', border: 'none', borderRadius: '4px', color: 'white', cursor: 'pointer', width: '100%' }}>
-              Coletar
-            </button>
-          </div>
-        </ModalArena>
+      {/* HUD */}
+      <ProgressBar progressBarRef={progressBarRef} />
+      <Perfil ROWS={ROWS} currentRow={currentRow} currentTileData={currentTileData} player={player} money={stats.money} gems={stats.gems} />
 
-        <ModalArena isOpen={modalArenaOpen} disableBackgroundClose onClose={handleCloseArena} >
-          {battleState === 'setup' && (
-            <div style={{ textAlign: 'center', padding: '10px', position: 'relative' }}>
-              <h2 style={{ color: 'cyan', marginBottom: '10px' }}>Preparação</h2>
-              <p style={{ color: '#ccc', fontSize: '14px' }}>Selecione até 2 itens para a batalha:</p>
-              
-              <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap', margin: '20px 0', minHeight: '60px' }}>
-                {consumables.length > 0 ? consumables.map((item, index) => {
-                  const isSelected = selectedItemIds.includes(item.id);
-                  const isFocused = setupFocusIndex === index;
+      {/* Modal de Drop (Mapa) */}
+      <ModalArena isOpen={modalDropOpen} onClose={() => setModalDropOpen(false)} showX={true} compact={dropInfo?.type === 'item'}>
+        <div style={{ textAlign: 'center', padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          {dropInfo?.type === 'item' && dropInfo.data ? (
+            <>
+              <h2 style={{ color: 'cyan', margin: '0 0 15px 0' }}>Item Encontrado!</h2>
+              <ItemCard item={dropInfo.data} />
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize: '40px', marginBottom: '10px' }}>{dropInfo?.icon}</div>
+              <h2 style={{ color: 'cyan', margin: '0 0 10px 0' }}>Encontrado!</h2>
+              <p style={{ fontSize: '18px', color: 'white' }}>{dropInfo?.msg}</p>
+            </>
+          )}
+          <button
+            onClick={() => setModalDropOpen(false)}
+            style={{ marginTop: '20px', padding: '8px 20px', background: '#3498db', border: 'none', borderRadius: '4px', color: 'white', cursor: 'pointer', width: '100%' }}>
+            Coletar
+          </button>
+        </div>
+      </ModalArena>
+
+      <ModalArena isOpen={modalArenaOpen} disableBackgroundClose onClose={handleCloseArena} >
+        {battleState === 'setup' && (
+          <div style={{ textAlign: 'center', padding: '10px', position: 'relative' }}>
+            <h2 style={{ color: 'cyan', marginBottom: '10px' }}>Preparação</h2>
+            <p style={{ color: '#ccc', fontSize: '14px' }}>Selecione até 2 itens para a batalha:</p>
+
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap', margin: '20px 0', minHeight: '60px' }}>
+              {consumables.length > 0 ? consumables.map((item, index) => {
+                const isSelected = selectedItemIds.includes(item.id);
+                const isFocused = setupFocusIndex === index;
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => toggleItemSelection(item.id)}
+                    style={{
+                      width: '50px', height: '50px',
+                      border: isSelected ? '2px solid cyan' : (isFocused ? '2px solid white' : `1px solid ${item.color}`),
+                      borderRadius: '8px',
+                      background: isSelected ? 'rgba(0, 255, 255, 0.2)' : 'rgba(0,0,0,0.3)',
+                      display: 'flex', justifyContent: 'center', alignItems: 'center',
+                      fontSize: '24px', cursor: 'pointer',
+                      transform: isFocused ? 'scale(1.1)' : 'scale(1)',
+                      boxShadow: isFocused ? '0 0 15px rgba(255,255,255,0.5)' : 'none',
+                      position: 'relative'
+                    }}
+                  >
+                    {item.icon}
+                    {isSelected && <div style={{ position: 'absolute', top: -5, right: -5, background: 'cyan', width: '15px', height: '15px', borderRadius: '50%', border: '1px solid black' }} />}
+                  </div>
+                );
+              }) : <span style={{ color: '#666' }}>Nenhum item consumível.</span>}
+            </div>
+
+            <div style={{ position: 'relative', height: '50px', display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: '30px' }}>
+              <button
+                onClick={() => setBattleState('fighting')}
+                style={{
+                  padding: '10px 40px',
+                  background: '#e74c3c', color: 'white',
+                  border: setupFocusIndex === consumables.length ? '2px solid white' : 'none',
+                  borderRadius: '5px', fontSize: '18px', cursor: 'pointer',
+                  boxShadow: setupFocusIndex === consumables.length ? '0 0 20px white' : '0 0 10px #c0392b',
+                  transform: setupFocusIndex === consumables.length ? 'scale(1.1)' : 'scale(1)',
+                  zIndex: 10
+                }}>
+                LUTAR! {setupFocusIndex === consumables.length && <span style={{ fontSize: '12px' }}></span>}
+              </button>
+
+              {/* Slots de Consumíveis (Lado Direito) */}
+              <div style={{ position: 'absolute', right: 0, top: 0, height: '100%', display: 'flex', gap: '10px' }}>
+                {[0, 1].map(slotIndex => {
+                  const itemId = selectedItemIds[slotIndex];
+                  const item = itemId ? consumables.find(i => i.id === itemId) : null;
+
                   return (
-                    <div 
-                      key={item.id} 
-                      onClick={() => toggleItemSelection(item.id)}
-                      style={{
-                        width: '50px', height: '50px',
-                        border: isSelected ? '2px solid cyan' : (isFocused ? '2px solid white' : `1px solid ${item.color}`),
-                        borderRadius: '8px',
-                        background: isSelected ? 'rgba(0, 255, 255, 0.2)' : 'rgba(0,0,0,0.3)',
-                        display: 'flex', justifyContent: 'center', alignItems: 'center',
-                        fontSize: '24px', cursor: 'pointer',
-                        transform: isFocused ? 'scale(1.1)' : 'scale(1)',
-                        boxShadow: isFocused ? '0 0 15px rgba(255,255,255,0.5)' : 'none',
-                        position: 'relative'
-                      }}
-                    >
-                      {item.icon}
-                      {isSelected && <div style={{ position: 'absolute', top: -5, right: -5, background: 'cyan', width: '15px', height: '15px', borderRadius: '50%', border: '1px solid black' }} />}
+                    <div key={slotIndex} style={{
+                      width: '50px', height: '50px',
+                      border: '1px dashed #555',
+                      borderRadius: '8px',
+                      background: 'rgba(0,0,0,0.5)',
+                      display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
+                      position: 'relative'
+                    }}>
+                      {item ? (
+                        <>
+                          <div style={{ fontSize: '20px' }}>{item.icon}</div>
+                          <div style={{ fontSize: '10px', color: 'white', fontWeight: 'bold', position: 'absolute', bottom: '2px', right: '2px', textShadow: '0 0 2px black' }}>
+                            {item.value || (item.stats ? Object.values(item.stats)[0] : '?')}
+                          </div>
+                        </>
+                      ) : (
+                        <span style={{ fontSize: '10px', color: '#444' }}>Vazio</span>
+                      )}
                     </div>
                   );
-                }) : <span style={{ color: '#666' }}>Nenhum item consumível.</span>}
-              </div>
-
-              <div style={{ position: 'relative', height: '50px', display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: '30px' }}>
-                <button 
-                  onClick={() => setBattleState('fighting')}
-                  style={{ 
-                    padding: '10px 40px', 
-                    background: '#e74c3c', color: 'white', 
-                    border: setupFocusIndex === consumables.length ? '2px solid white' : 'none', 
-                    borderRadius: '5px', fontSize: '18px', cursor: 'pointer', 
-                    boxShadow: setupFocusIndex === consumables.length ? '0 0 20px white' : '0 0 10px #c0392b',
-                    transform: setupFocusIndex === consumables.length ? 'scale(1.1)' : 'scale(1)',
-                    zIndex: 10
-                  }}>
-                  LUTAR! {setupFocusIndex === consumables.length && <span style={{fontSize: '12px'}}></span>}
-                </button>
-
-                {/* Slots de Consumíveis (Lado Direito) */}
-                <div style={{ position: 'absolute', right: 0, top: 0, height: '100%', display: 'flex', gap: '10px' }}>
-                  {[0, 1].map(slotIndex => {
-                    const itemId = selectedItemIds[slotIndex];
-                    const item = itemId ? consumables.find(i => i.id === itemId) : null;
-                    
-                    return (
-                      <div key={slotIndex} style={{
-                        width: '50px', height: '50px',
-                        border: '1px dashed #555',
-                        borderRadius: '8px',
-                        background: 'rgba(0,0,0,0.5)',
-                        display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
-                        position: 'relative'
-                      }}>
-                        {item ? (
-                          <>
-                            <div style={{ fontSize: '20px' }}>{item.icon}</div>
-                            <div style={{ fontSize: '10px', color: 'white', fontWeight: 'bold', position: 'absolute', bottom: '2px', right: '2px', textShadow: '0 0 2px black' }}>
-                              {item.value || (item.stats ? Object.values(item.stats)[0] : '?')}
-                            </div>
-                          </>
-                        ) : (
-                          <span style={{ fontSize: '10px', color: '#444' }}>Vazio</span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
+                })}
               </div>
             </div>
-          )}
+          </div>
+        )}
 
-          {battleState === 'fighting' && (
-            <Arena 
+        {battleState === 'fighting' && (
+          <>      {/* --- INFO TOPO --- */}
+            <div style={{
+              position: 'absolute',
+              top: '5px',
+              width: '100%',
+              textAlign: 'center',
+              color: 'white',
+              fontSize: '12px',
+              zIndex: 30,
+              textShadow: '0 0 3px black',
+              pointerEvents: 'none'
+            }}>
+              <span style={{ marginRight: '10px' }}>
+                GRID: <span style={{ color: 'cyan', fontWeight: 'bold' }}>{currentTileData?.nivel || 1}</span>
+              </span>
+              <span>
+                TENSÃO: <span style={{ color: (mapInfo?.tension || 0) > 7 ? '#e74c3c' : '#f1c40f', fontWeight: 'bold' }}>
+                  {mapInfo?.tension || 0}/10
+                </span>
+              </span>
+            </div>
+            <Arena
               currentTileData={mapInfo}
               player={player}
               setPlayer={setPlayer}
@@ -665,23 +686,24 @@ export const Game = () => {
               onClose={handleCloseArena}
               battleItems={player.items.filter(i => selectedItemIds.includes(i.id))}
             />
-          )}
-        </ModalArena>
-        <Nav 
-          ROWS={ROWS} 
-          currentRow={currentRow} 
-          currentTileData={currentTileData} 
-          player={player} 
-          setPlayer={setPlayer}
-          money={stats.money} 
-          gems={stats.gems}
-          setStats={setStats}
-          activeModal={activeNavModal}
-          setActiveModal={setActiveNavModal}
-        />
+          </>
+        )}
+      </ModalArena>
+      <Nav
+        ROWS={ROWS}
+        currentRow={currentRow}
+        currentTileData={currentTileData}
+        player={player}
+        setPlayer={setPlayer}
+        money={stats.money}
+        gems={stats.gems}
+        setStats={setStats}
+        activeModal={activeNavModal}
+        setActiveModal={setActiveNavModal}
+      />
 
-        {/* Aviso de Orientação */}
-        <OrientationWarning width={screen.width} height={screen.height} />
+      {/* Aviso de Orientação */}
+      <OrientationWarning width={screen.width} height={screen.height} />
     </div>
   );
 };
