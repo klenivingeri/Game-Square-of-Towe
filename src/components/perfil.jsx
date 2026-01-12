@@ -1,7 +1,7 @@
 import { memo } from 'react';
 
 export const Perfil = memo(({ ROWS, currentRow, currentTileData, player, money, gems }) => (
-  <div style={{ position: 'absolute', top: 20, left: 20, color: 'white', background: 'rgba(0,0,0,0.8)', padding: '10px', borderRadius: '5px', zIndex: 100, fontSize: '14px', lineHeight: '1.5' }}>
+  <div style={{ position: 'absolute', top: 20, left: 20, color: 'white', background: 'rgba(0,0,0,0.8)', padding: '10px', borderRadius: '5px', zIndex: 20, fontSize: '14px', lineHeight: '1.5' }}>
     <div><strong>Andar:</strong> {ROWS - currentRow} / {ROWS}</div>
     <div><strong>Nível do Grid:</strong> {currentTileData?.nivel || 1}</div>
     {player && (

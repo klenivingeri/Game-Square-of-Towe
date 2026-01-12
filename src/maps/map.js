@@ -1,17 +1,47 @@
 const gridLevel = {
-  1: { cor: "#2ed6ec", zIndex: 1},
-  2: { cor: "#26c0d4", zIndex: 2 },
-  3: { cor: "#1fabbd", zIndex: 3 },
-  4: { cor: "#1995a5", zIndex: 4 },
-  5: { cor: "#12808e", zIndex: 5 },
-  6: { cor: "#0c6a77", zIndex: 6 },
-  7: { cor: "#06555f", zIndex: 7 },
-  8: { cor: "#04444c", zIndex: 8 },
-  9: { cor: "#023339", zIndex: 9 },
-  10: { cor: "#012226", zIndex: 10 },
-  11: { cor: "#001113", zIndex: 11 },
-  12: { cor: "#000000", zIndex: 12 },
+  // --- TEMA TERRA / MARROM (Nível 1 ao 12) ---
+  1: { cor: "#a87b51", zIndex: 1 },  // Marrom Claro
+  2: { cor: "#966a44", zIndex: 2 },
+  3: { cor: "#855a38", zIndex: 3 },
+  4: { cor: "#734a2d", zIndex: 4 },
+  5: { cor: "#623b22", zIndex: 5 },
+  6: { cor: "#512d18", zIndex: 6 },
+  7: { cor: "#401f0f", zIndex: 7 },
+  8: { cor: "#301308", zIndex: 8 },
+  9: { cor: "#210903", zIndex: 9 },
+  10: { cor: "#120401", zIndex: 10 },
+  11: { cor: "#080100", zIndex: 11 },
+  12: { cor: "#000000", zIndex: 12 }, // Final Marrom (Escuro Total)
+
+  // --- TEMA FLORESTA / VERDE (Nível 13 ao 24) ---
+  13: { cor: "#2ecc71", zIndex: 13 }, // Verde Esmeralda
+  14: { cor: "#27ae60", zIndex: 14 },
+  15: { cor: "#219150", zIndex: 15 },
+  16: { cor: "#1b7541", zIndex: 16 },
+  17: { cor: "#155a32", zIndex: 17 },
+  18: { cor: "#104024", zIndex: 18 },
+  19: { cor: "#0b2d19", zIndex: 19 },
+  20: { cor: "#071c0f", zIndex: 20 },
+  21: { cor: "#040f08", zIndex: 21 },
+  22: { cor: "#020704", zIndex: 22 },
+  23: { cor: "#010301", zIndex: 23 },
+  24: { cor: "#000000", zIndex: 24 }, // Final Verde (Escuro Total)
+
+  // --- TEMA OCEANO / AZUL (Nível 25 ao 36) ---
+  25: { cor: "#3498db", zIndex: 25 }, // Azul Brilhante
+  26: { cor: "#2980b9", zIndex: 26 },
+  27: { cor: "#2471a3", zIndex: 27 },
+  28: { cor: "#1f618d", zIndex: 28 },
+  29: { cor: "#1a5276", zIndex: 29 },
+  30: { cor: "#154360", zIndex: 30 },
+  31: { cor: "#11344c", zIndex: 31 },
+  32: { cor: "#0d2538", zIndex: 32 },
+  33: { cor: "#081824", zIndex: 33 },
+  34: { cor: "#050b12", zIndex: 34 },
+  35: { cor: "#020508", zIndex: 35 },
+  36: { cor: "#000000", zIndex: 36 }, // Final Azul (Escuro Total)
 };
+
 
 const gridMap = [
   [ //Mapa nivel 1

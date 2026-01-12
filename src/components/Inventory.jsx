@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Attributes } from './Attributes';
 import { ItemCard } from './StateDriven/Items';
 
@@ -9,7 +9,7 @@ export const Inventory = ({ player, setPlayer, gems, setStats }) => {
   const [diff, setDiff] = useState({});
 
   // Gera 20 slots vazios para exemplo
-  const slots = Array.from({ length: 20 });
+  const slots = useMemo(() => Array.from({ length: 20 }), []);
 
   const equipmentSlots = [
     { id: 'head', icon: 'o' },
@@ -25,8 +25,13 @@ export const Inventory = ({ player, setPlayer, gems, setStats }) => {
   const isEquipment = (item) => ['weapon', 'shield', 'head', 'chest', 'arms', 'pants', 'boots'].includes(item.type);
 
   // Listas filtradas para as abas
-  const equipmentItems = player.items.filter(isEquipment);
-  const cosmeticItems = [...player.items.filter(i => !isEquipment(i)), ...player.cosmetics];
+  const equipmentItems = useMemo(() => 
+    player.items.filter(isEquipment), 
+  [player.items]);
+
+  const cosmeticItems = useMemo(() => 
+    [...player.items.filter(i => !isEquipment(i)), ...player.cosmetics], 
+  [player.items, player.cosmetics]);
 
   const handleEquip = () => {
     if (!selectedItem) return;

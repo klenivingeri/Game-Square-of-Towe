@@ -16,10 +16,13 @@ export const Game = () => {
   const [screen, setScreen] = useState({ width: window.innerWidth, height: window.innerHeight });
   const [modalArenaOpen, setModalArenaOpen] = useState(false);
   const [modalDropOpen, setModalDropOpen] = useState(false);
+  const [modalPortalOpen, setModalPortalOpen] = useState(false);
+  const [portalVisible, setPortalVisible] = useState(false);
   const [activeNavModal, setActiveNavModal] = useState(null);
   const [dropInfo, setDropInfo] = useState(null);
   const [mapInfo, setMapInfo] = useState({});
-  const gameMap = useMemo(() => createMatchMap(0), []);
+  const [mapLevel, setMapLevel] = useState(0);
+  const gameMap = useMemo(() => createMatchMap(mapLevel), [mapLevel]);
   const ROWS = gameMap.length;
   const COLS = gameMap[0].length;
 
@@ -32,9 +35,15 @@ export const Game = () => {
   const currentPosRef = useRef({ x: screen.width / 2, y: mapHeight - 50 });
   const reqRef = useRef(null);
   const [isMoving, setIsMoving] = useState(false);
-  const walkingAudioRef = useRef(new Audio(walkingSound));
+  const walkingAudioRef = useRef(null);
+  const portalVisibleRef = useRef(portalVisible);
+
+  useEffect(() => {
+    portalVisibleRef.current = portalVisible;
+  }, [portalVisible]);
 
   // --- NOVOS ESTADOS E REFS ---
+  const velocityRef = useRef({ x: 0, y: 0 });
   const progressBarRef = useRef(null);
   const totalWalkedRef = useRef(0);
   const triggerDistanceRef = useRef(0);
@@ -92,10 +101,21 @@ export const Game = () => {
     localStorage.setItem('rpg_stats', JSON.stringify(stats));
   }, [player, stats]);
 
+  // Ref para acessar o estado atual do player dentro de callbacks/eventos sem recriá-los
+  const playerRef = useRef(player);
+  useEffect(() => {
+    playerRef.current = player;
+  }, [player]);
+
   // Filtra apenas itens consumíveis (que possuem a propriedade 'value') para a batalha
   const consumables = useMemo(() => {
     return player.items.filter(item => item.value !== undefined);
   }, [player.items]);
+
+  // Memoiza os itens de batalha para evitar recriação de array e re-render da Arena
+  const battleItems = useMemo(() => {
+    return player.items.filter(i => selectedItemIds.includes(i.id));
+  }, [player.items, selectedItemIds]);
 
   // --- REFERÊNCIAS PARA O LERP ---
   const mapContainerRef = useRef(null);
@@ -113,17 +133,40 @@ export const Game = () => {
 
   // Configuração do som de andar
   useEffect(() => {
+    // Instancia o áudio apenas uma vez ao montar o componente
+    walkingAudioRef.current = new Audio(walkingSound);
     walkingAudioRef.current.loop = true;
     walkingAudioRef.current.playbackRate = 2.5; // Acelerado para acompanhar a movimentação
+    
     return () => {
-      walkingAudioRef.current.pause();
+      if (walkingAudioRef.current) walkingAudioRef.current.pause();
+      walkingAudioRef.current = null;
     };
   }, []);
 
+  // Resetar posição ao mudar de mapa
+  useEffect(() => {
+    const startY = mapHeight - 150;
+    const startX = (screen.width / 2) - (playerSize / 2);
+    setPos({ x: startX, y: startY });
+    currentPosRef.current = { x: startX, y: startY };
+    lastPos.current = { x: startX, y: startY };
+    velocityRef.current = { x: 0, y: 0 };
+    scrollRef.current = mapHeight - screen.height;
+    
+    if (progressBarRef.current) {
+      progressBarRef.current.style.width = '0%';
+      progressBarRef.current.style.background = 'cyan';
+    }
+    totalWalkedRef.current = 0;
+  }, [mapLevel, mapHeight, screen, playerSize]);
+
   // Controle de Play/Pause do som de andar
   useEffect(() => {
-    if (isMoving) walkingAudioRef.current.play().catch(() => { });
-    else walkingAudioRef.current.pause();
+    if (walkingAudioRef.current) {
+      if (isMoving) walkingAudioRef.current.play().catch(() => { });
+      else walkingAudioRef.current.pause();
+    }
   }, [isMoving]);
 
   // 3. FUNÇÃO DE EVENTOS (Drop ou Mobs)
@@ -190,7 +233,10 @@ export const Game = () => {
       }
       setModalDropOpen(true);
     } else {
-      setMapInfo({ nivel, tension, mobHp, mobAtk });
+      // Salva XP e Nível atuais para verificar vitória depois
+      const startXp = playerRef.current.attributes.xp;
+      const startLevel = playerRef.current.attributes.level;
+      setMapInfo({ nivel, tension, mobHp, mobAtk, cRow, startXp, startLevel });
       // Aqui entrará a sua lógica de batalha
       setBattleState('setup');
       // setSelectedItemIds([]); // Mantém a seleção anterior (Persistência)
@@ -208,15 +254,27 @@ export const Game = () => {
 
   useEffect(() => {
     const update = () => {
-      const speed = 6;
-      let dx = 0;
-      let dy = 0;
+      // Configurações de Física (Deslizamento)
+      const ACCELERATION = 0.8;
+      const FRICTION = 0.92;
+      const MAX_SPEED = 6;
+      const STOP_THRESHOLD = 0.1;
+
+      let inputX = 0;
+      let inputY = 0;
 
       if (!modalArenaOpen && !activeNavModal && !modalDropOpen) {
-        if (keys.current['ArrowUp'] || keys.current['w']) dy -= speed;
-        if (keys.current['ArrowDown'] || keys.current['s']) dy += speed;
-        if (keys.current['ArrowLeft'] || keys.current['a']) dx -= speed;
-        if (keys.current['ArrowRight'] || keys.current['d']) dx += speed;
+        if (keys.current['ArrowUp'] || keys.current['w']) inputY -= 1;
+        if (keys.current['ArrowDown'] || keys.current['s']) inputY += 1;
+        if (keys.current['ArrowLeft'] || keys.current['a']) inputX -= 1;
+        if (keys.current['ArrowRight'] || keys.current['d']) inputX += 1;
+
+        // Normaliza vetor de entrada
+        if (inputX !== 0 || inputY !== 0) {
+          const length = Math.sqrt(inputX * inputX + inputY * inputY);
+          inputX /= length;
+          inputY /= length;
+        }
 
         // Lógica de Toque (Joystick Virtual)
         if (touchRef.current.active) {
@@ -224,11 +282,39 @@ export const Game = () => {
           const distance = Math.sqrt(moveX * moveX + moveY * moveY);
           if (distance > 10) { // Zona morta para evitar movimentos acidentais
             const angle = Math.atan2(moveY, moveX);
-            dx += Math.cos(angle) * speed;
-            dy += Math.sin(angle) * speed;
+            inputX = Math.cos(angle);
+            inputY = Math.sin(angle);
+          } else {
+            inputX = 0;
+            inputY = 0;
           }
         }
       }
+
+      // Aplica Aceleração
+      if (inputX !== 0 || inputY !== 0) {
+        velocityRef.current.x += inputX * ACCELERATION;
+        velocityRef.current.y += inputY * ACCELERATION;
+
+        // Limita velocidade
+        const currentSpeed = Math.sqrt(velocityRef.current.x ** 2 + velocityRef.current.y ** 2);
+        if (currentSpeed > MAX_SPEED) {
+          const ratio = MAX_SPEED / currentSpeed;
+          velocityRef.current.x *= ratio;
+          velocityRef.current.y *= ratio;
+        }
+      } else {
+        // Aplica Fricção
+        velocityRef.current.x *= FRICTION;
+        velocityRef.current.y *= FRICTION;
+      }
+
+      // Para completamente se for muito lento
+      if (Math.abs(velocityRef.current.x) < STOP_THRESHOLD) velocityRef.current.x = 0;
+      if (Math.abs(velocityRef.current.y) < STOP_THRESHOLD) velocityRef.current.y = 0;
+
+      const dx = velocityRef.current.x;
+      const dy = velocityRef.current.y;
 
       const moving = dx !== 0 || dy !== 0;
       setIsMoving(prev => (prev !== moving ? moving : prev));
@@ -247,6 +333,23 @@ export const Game = () => {
 
       newX = Math.max(0, Math.min(newX, screen.width - playerSize));
       newY = Math.max(0, Math.min(newY, mapHeight - playerSize));
+
+      // Checagem de Colisão com Portal
+      if (portalVisibleRef.current) {
+        const portalHitBox = { 
+          x: (screen.width / 2) - 75, 
+          y: 100, 
+          w: 100, 
+          h: 100 
+        };
+
+        if (newX < portalHitBox.x + portalHitBox.w && newX + playerSize > portalHitBox.x && newY < portalHitBox.y + portalHitBox.h && newY + playerSize > portalHitBox.y) {
+          setPortalVisible(false);
+          setModalPortalOpen(false);
+          setMapLevel(prev => prev + 1);
+          return;
+        }
+      }
 
       if (newX !== prevPos.x || newY !== prevPos.y) {
         currentPosRef.current = { x: newX, y: newY };
@@ -425,7 +528,19 @@ export const Game = () => {
   const handleCloseArena = useCallback(() => {
     setModalArenaOpen(false);
     setBattleState('none');
-  }, []);
+
+    // Verifica se foi uma vitória no topo do mapa (Linha 0)
+    if (mapInfo.cRow === 0) {
+      const current = playerRef.current;
+      const xpGained = current.attributes.xp > mapInfo.startXp;
+      const levelGained = current.attributes.level > mapInfo.startLevel;
+
+      if (xpGained || levelGained) {
+        setModalPortalOpen(true);
+        setPortalVisible(true);
+      }
+    }
+  }, [mapInfo]);
 
   const toggleItemSelection = (itemId) => {
     setSelectedItemIds(prev => {
@@ -504,6 +619,10 @@ export const Game = () => {
           75% { transform: rotate(3deg) }
           100% { transform: rotate(0deg) translateX(0); }
         }
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
       `}</style>
 
       {/* CONTAINER DO MAPA */}
@@ -520,6 +639,22 @@ export const Game = () => {
         }}>
 
         {mapTiles}
+
+        {/* Portal */}
+        {portalVisible && (
+          <div style={{
+            position: 'absolute',
+            top: '100px',
+            left: '50%',
+            marginLeft: '-75px',
+            width: '100px',
+            height: '100px',
+            border: '5px solid white',
+            boxShadow: '0 0 30px white',
+            animation: 'spin 4s linear infinite',
+            zIndex: 20
+          }} />
+        )}
 
         {/* Partículas (Rastro) */}
         {particles.map(p => (
@@ -571,6 +706,37 @@ export const Game = () => {
             onClick={() => setModalDropOpen(false)}
             style={{ marginTop: '20px', padding: '8px 20px', background: '#3498db', border: 'none', borderRadius: '4px', color: 'white', cursor: 'pointer', width: '100%' }}>
             Coletar
+          </button>
+        </div>
+      </ModalArena>
+
+      {/* Modal de Portal Aberto */}
+      <ModalArena isOpen={modalPortalOpen} onClose={() => setModalPortalOpen(false)} showX={true}>
+        <div style={{ textAlign: 'center', padding: '20px', color: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <h2 style={{ color: 'cyan', marginBottom: '20px', textShadow: '0 0 10px cyan', fontSize: '2rem' }}>
+            PORTAL ABERTO!
+          </h2>
+          <div style={{ fontSize: '60px', marginBottom: '20px' }}>🌀</div>
+          <p style={{ fontSize: '18px', marginBottom: '30px', lineHeight: '1.5' }}>
+            Você derrotou o guardião do topo!<br />
+            O portal para o próximo nível está aberto.
+          </p>
+          <button
+            onClick={() => setModalPortalOpen(false)}
+            style={{
+              padding: '12px 40px',
+              fontSize: '20px',
+              background: 'cyan',
+              color: 'black',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontWeight: 'bold',
+              boxShadow: '0 0 20px cyan',
+              textTransform: 'uppercase'
+            }}
+          >
+            Entrar
           </button>
         </div>
       </ModalArena>
@@ -684,7 +850,7 @@ export const Game = () => {
               setPlayer={setPlayer}
               setStats={setStats}
               onClose={handleCloseArena}
-              battleItems={player.items.filter(i => selectedItemIds.includes(i.id))}
+              battleItems={battleItems}
             />
           </>
         )}
