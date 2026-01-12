@@ -16,12 +16,12 @@ export default defineConfig({
       },
       manifest: {
         name: 'Square of Tower',
+        display: 'standalone',
+        orientation: 'landscape',
         short_name: 'Square of Tower',
         description: 'Um RPG de torre desafiador',
         theme_color: '#222222',
         background_color: '#222222',
-        display: 'standalone',
-        orientation: 'portrait',
         icons: [
           { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' },
           { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png' },

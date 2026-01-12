@@ -611,9 +611,18 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
               background: '#333', 
               border: `2px solid ${item.color}`,
               display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer', fontSize: '20px',
-              boxShadow: '0 2px 5px rgba(0,0,0,0.5)'
+              boxShadow: '0 2px 5px rgba(0,0,0,0.5)',
+              position: 'relative'
             }}>
             {item.icon}
+            <div style={{
+              position: 'absolute', bottom: '-5px', right: '-5px',
+              background: 'rgba(0,0,0,0.8)', color: 'white', fontSize: '10px', fontWeight: 'bold',
+              padding: '1px 4px', borderRadius: '4px', border: '1px solid #555',
+              textShadow: '0 0 2px black'
+            }}>
+              {item.value}
+            </div>
           </div>
         ))}
       </div>

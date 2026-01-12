@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { createMatchMap } from './maps/map';
 import { convertPercentage } from './help/convertPercentage';
-import { toggleFullScreen } from './help/toggleFullScreen';
 import { ProgressBar } from './components/progressBar';
 import { Perfil } from './components/perfil';
 import { ModalArena } from './components/ModalArena';
@@ -11,6 +10,7 @@ import coinSound from './assets/sons/drop-coin.mp3';
 import jewelSound from './assets/sons/drop_jewel.mp3';
 import walkingSound from './assets/sons/sound-of-walking.mp3';
 import { BASE_CONSUMABLES, ItemCard, RARITIES } from './components/StateDriven/Items';
+import { OrientationWarning } from './components/OrientationWarning';
 
 export const Game = () => {
   const [screen, setScreen] = useState({ width: window.innerWidth, height: window.innerHeight });
@@ -193,13 +193,18 @@ export const Game = () => {
       setMapInfo({ nivel, tension, mobHp, mobAtk });
       // Aqui entrará a sua lógica de batalha
       setBattleState('setup');
-      setSelectedItemIds([]);
+      // setSelectedItemIds([]); // Mantém a seleção anterior (Persistência)
       setModalArenaOpen(true);
       
       setStats(s => ({ ...s }));
     }
 
   };
+
+  // Limpa itens selecionados que não existem mais no inventário (ex: usados em batalha)
+  useEffect(() => {
+    setSelectedItemIds(prev => prev.filter(id => player.items.some(item => item.id === id)));
+  }, [player.items]);
 
   useEffect(() => {
     const update = () => {
@@ -547,27 +552,6 @@ export const Game = () => {
         <ProgressBar progressBarRef={progressBarRef} />
         <Perfil ROWS={ROWS} currentRow={currentRow} currentTileData={currentTileData} player={player} money={stats.money} gems={stats.gems} />
         
-        {/* Botão Fullscreen */}
-        <button
-          onClick={toggleFullScreen}
-          style={{
-            position: 'absolute',
-            top: '10px',
-            right: '10px',
-            zIndex: 100,
-            padding: '8px',
-            background: 'rgba(0,0,0,0.5)',
-            color: 'white',
-            border: '1px solid white',
-            borderRadius: '5px',
-            cursor: 'pointer',
-            fontSize: '20px',
-            lineHeight: '1',
-          }}
-        >
-          ⛶
-        </button>
-
         {/* Modal de Drop (Mapa) */}
         <ModalArena isOpen={modalDropOpen} onClose={() => setModalDropOpen(false)} showX={true} compact={dropInfo?.type === 'item'}>
           <div style={{ textAlign: 'center', padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -593,7 +577,7 @@ export const Game = () => {
 
         <ModalArena isOpen={modalArenaOpen} disableBackgroundClose onClose={handleCloseArena} >
           {battleState === 'setup' && (
-            <div style={{ textAlign: 'center', padding: '10px' }}>
+            <div style={{ textAlign: 'center', padding: '10px', position: 'relative' }}>
               <h2 style={{ color: 'cyan', marginBottom: '10px' }}>Preparação</h2>
               <p style={{ color: '#ccc', fontSize: '14px' }}>Selecione até 2 itens para a batalha:</p>
               
@@ -624,18 +608,51 @@ export const Game = () => {
                 }) : <span style={{ color: '#666' }}>Nenhum item consumível.</span>}
               </div>
 
-              <button 
-                onClick={() => setBattleState('fighting')}
-                style={{ 
-                  padding: '10px 40px', 
-                  background: '#e74c3c', color: 'white', 
-                  border: setupFocusIndex === consumables.length ? '2px solid white' : 'none', 
-                  borderRadius: '5px', fontSize: '18px', cursor: 'pointer', 
-                  boxShadow: setupFocusIndex === consumables.length ? '0 0 20px white' : '0 0 10px #c0392b',
-                  transform: setupFocusIndex === consumables.length ? 'scale(1.1)' : 'scale(1)'
-                }}>
-                LUTAR! {setupFocusIndex === consumables.length && <span style={{fontSize: '12px'}}></span>}
-              </button>
+              <div style={{ position: 'relative', height: '50px', display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: '30px' }}>
+                <button 
+                  onClick={() => setBattleState('fighting')}
+                  style={{ 
+                    padding: '10px 40px', 
+                    background: '#e74c3c', color: 'white', 
+                    border: setupFocusIndex === consumables.length ? '2px solid white' : 'none', 
+                    borderRadius: '5px', fontSize: '18px', cursor: 'pointer', 
+                    boxShadow: setupFocusIndex === consumables.length ? '0 0 20px white' : '0 0 10px #c0392b',
+                    transform: setupFocusIndex === consumables.length ? 'scale(1.1)' : 'scale(1)',
+                    zIndex: 10
+                  }}>
+                  LUTAR! {setupFocusIndex === consumables.length && <span style={{fontSize: '12px'}}></span>}
+                </button>
+
+                {/* Slots de Consumíveis (Lado Direito) */}
+                <div style={{ position: 'absolute', right: 0, top: 0, height: '100%', display: 'flex', gap: '10px' }}>
+                  {[0, 1].map(slotIndex => {
+                    const itemId = selectedItemIds[slotIndex];
+                    const item = itemId ? consumables.find(i => i.id === itemId) : null;
+                    
+                    return (
+                      <div key={slotIndex} style={{
+                        width: '50px', height: '50px',
+                        border: '1px dashed #555',
+                        borderRadius: '8px',
+                        background: 'rgba(0,0,0,0.5)',
+                        display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
+                        position: 'relative'
+                      }}>
+                        {item ? (
+                          <>
+                            <div style={{ fontSize: '20px' }}>{item.icon}</div>
+                            <div style={{ fontSize: '10px', color: 'white', fontWeight: 'bold', position: 'absolute', bottom: '2px', right: '2px', textShadow: '0 0 2px black' }}>
+                              {item.value || (item.stats ? Object.values(item.stats)[0] : '?')}
+                            </div>
+                          </>
+                        ) : (
+                          <span style={{ fontSize: '10px', color: '#444' }}>Vazio</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           )}
 
@@ -662,6 +679,9 @@ export const Game = () => {
           activeModal={activeNavModal}
           setActiveModal={setActiveNavModal}
         />
+
+        {/* Aviso de Orientação */}
+        <OrientationWarning width={screen.width} height={screen.height} />
     </div>
   );
 };
