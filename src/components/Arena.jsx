@@ -39,7 +39,8 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
     gemsGained: 0,
     result: null,
     activeBonuses: [],
-    floatingTexts: []
+    floatingTexts: [],
+    levelUpProgress: null
   });
 
   // Estado para renderização visual
@@ -97,7 +98,8 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
       gemsGained: 0,
       result: null,
       activeBonuses: [],
-      floatingTexts: []
+      floatingTexts: [],
+      levelUpProgress: null
     };
     setRender({ ...gameState.current });
     setBonusModalOpen(false);
@@ -136,6 +138,15 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
           ft.life--;
         });
         state.floatingTexts = state.floatingTexts.filter(ft => ft.life > 0);
+        changed = true;
+      }
+
+      // Animação de Level Up
+      if (state.levelUpProgress !== null) {
+        state.levelUpProgress += 2; // Velocidade da animação
+        if (state.levelUpProgress > 100) {
+          state.levelUpProgress = null;
+        }
         changed = true;
       }
 
@@ -371,7 +382,18 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
               // Tocar som de Level Up
               playSound(audioBase.lvl);
 
-              alert(`LEVEL UP! Você alcançou o nível ${attr.level}!`);
+              // Inicia animação visual
+              state.levelUpProgress = 0;
+
+              state.floatingTexts.push({
+                id: Date.now() + Math.random(),
+                x: PLAYER_X + 10,
+                y: 120,
+                text: "LEVEL UP!",
+                color: '#f1c40f',
+                isCrit: true,
+                life: 80
+              });
             }
 
             return { ...prev, attributes: attr };
@@ -500,6 +522,7 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
         shield={render.playerShield}
         textColor="#000"
         isAttacking={render.combat}
+        levelUpProgress={render.levelUpProgress}
         zIndex={20}
       />
 

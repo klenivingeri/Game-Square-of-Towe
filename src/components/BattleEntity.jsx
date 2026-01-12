@@ -15,7 +15,8 @@ export const BattleEntity = memo(({
   opacity = 1,
   // Props preparadas para futuras animações
   isAttacking = false,
-  isMoving = false
+  isMoving = false,
+  levelUpProgress = null
 }) => {
   // Lógica de animação (Shake ao tomar dano ou Scale ao atacar)
   const transform = hit > 0
@@ -48,6 +49,19 @@ export const BattleEntity = memo(({
       transition: 'transform 0.05s'
     }}>
       {label}
+
+      {/* Animação de Level Up (Preenchimento) */}
+      {levelUpProgress !== null && (
+        <div style={{
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          width: '100%',
+          height: `${Math.min(100, levelUpProgress)}%`,
+          background: 'rgba(255, 255, 255, 0.6)',
+          zIndex: 5
+        }} />
+      )}
 
       {/* Barra de Carga do Ataque */}
       {attackProgress !== undefined && attackProgress !== null && (
