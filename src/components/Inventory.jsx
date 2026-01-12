@@ -204,6 +204,78 @@ export const Inventory = ({ player, setPlayer, gems, setStats }) => {
     setSelectedItem(null);
   };
 
+  const getUpgradeCost = (level) => {
+    const costs = [10, 25, 60, 150, 400];
+    return costs[level] || 0;
+  };
+
+  const handleUpdate = () => {
+    if (!selectedItem) return;
+
+    const currentLevel = selectedItem.level || 0;
+    if (currentLevel >= 5) return;
+
+    const cost = getUpgradeCost(currentLevel);
+
+    if (gems < cost) {
+      alert(`Diamantes insuficientes! Necessário: ${cost} 💎`);
+      return;
+    }
+
+    if (setStats) {
+      setStats(prev => ({ ...prev, gems: prev.gems - cost }));
+    }
+
+    const newItem = { ...selectedItem };
+    newItem.level = currentLevel + 1;
+    newItem.price = (newItem.price || 0) * 2;
+    newItem.stars = "★".repeat(newItem.level);
+
+    if (newItem.stats) {
+      const newStats = { ...newItem.stats };
+      Object.keys(newStats).forEach(key => {
+        const bonus = Math.random() < 0.05 ? 2 : 1;
+        newStats[key] = (newStats[key] || 0) + bonus;
+      });
+      newItem.stats = newStats;
+    }
+
+    setPlayer(prev => {
+      const selectedId = newItem.uniqueId || newItem.id;
+      const newEquipment = { ...prev.equipment };
+      const newAttributes = { ...prev.attributes };
+
+      // Update equipment if equipped
+      Object.keys(newEquipment).forEach(slot => {
+        const equipped = newEquipment[slot];
+        if (equipped && (equipped.uniqueId || equipped.id) === selectedId) {
+          // Remove old stats
+          if (selectedItem.stats) {
+            Object.entries(selectedItem.stats).forEach(([k, v]) => {
+              if (newAttributes[k] !== undefined) newAttributes[k] -= v;
+            });
+          }
+          // Add new stats
+          if (newItem.stats) {
+            Object.entries(newItem.stats).forEach(([k, v]) => {
+              if (newAttributes[k] !== undefined) newAttributes[k] += v;
+            });
+          }
+          newEquipment[slot] = newItem;
+        }
+      });
+
+      // Update lists
+      const newItems = prev.items.map(i => (i.uniqueId || i.id) === selectedId ? newItem : i);
+      const newCosmetics = prev.cosmetics.map(i => (i.uniqueId || i.id) === selectedId ? newItem : i);
+
+      if (newAttributes.hp > newAttributes.maxHp) newAttributes.hp = newAttributes.maxHp;
+
+      return { ...prev, attributes: newAttributes, equipment: newEquipment, items: newItems, cosmetics: newCosmetics };
+    });
+    setSelectedItem(newItem);
+  };
+
   return (
     <div style={{ display: 'flex', gap: '5px', height: '100%', overflowY: 'auto', paddingRight: '2px', flexWrap: 'wrap', alignContent: 'flex-start' }}>
 
@@ -309,21 +381,26 @@ export const Inventory = ({ player, setPlayer, gems, setStats }) => {
               {Object.values(player.equipment).some(e => e && (e.uniqueId === selectedItem.uniqueId || e.id === selectedItem.id)) ? (
                 <button
                   onClick={handleUnequip}
-                  style={{ padding: '10px 20px', background: '#c0392b', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>
+                  style={{ padding: '8px 12px', fontSize: '10px', background: '#c0392b', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>
                   Desequipar
                 </button>
               ) : (
                 tab === 'items' && isEquipment(selectedItem) && (
                   <button
                     onClick={handleEquip}
-                    style={{ padding: '10px 20px', background: '#27ae60', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>
+                    style={{ padding: '8px 12px', fontSize: '10px', background: '#27ae60', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>
                     Equipar
                   </button>
                 )
               )}
               <button
+                onClick={handleUpdate}
+                style={{ padding: '8px 12px', fontSize: '10px', background: '#3498db', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>
+                Update {(selectedItem.level || 0) < 5 ? `(${getUpgradeCost(selectedItem.level || 0)} 💎)` : '(Max)'}
+              </button>
+              <button
                 onClick={handleSell}
-                style={{ padding: '10px 20px', background: '#e67e22', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>
+                style={{ padding: '8px 12px', fontSize: '12px', background: '#e67e22', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>
                 Vender ({Math.floor((selectedItem.price || 0) * 0.4)} 💰)
               </button>
             </div>

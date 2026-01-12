@@ -86,6 +86,20 @@ export const ItemCard = ({ item, style, onClick, children }) => {
         pointerEvents: 'none'
       }} />
 
+      {item.stars && (
+        <div style={{
+          position: 'absolute',
+          top: '5px',
+          left: '5px',
+          color: '#f1c40f',
+          fontSize: '10px',
+          zIndex: 2,
+          textShadow: '0 0 2px black'
+        }}>
+          {item.stars}
+        </div>
+      )}
+
       <div style={{ fontSize: '32px', marginBottom: '5px', filter: `drop-shadow(0 0 5px ${rarity?.color || '#444'})`, zIndex: 1 }}>
         {item.icon}
       </div>
