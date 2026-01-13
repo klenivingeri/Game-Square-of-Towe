@@ -114,6 +114,11 @@ const gridMap = [
 export const createMatchMap = (room) => {
   if (!gridMap[room]) return null;
   return gridMap[room].map((line) =>
-    line.map((grid) => ({ nivel: (room+1) * grid, ...gridLevel[grid] }))
+    line.map((grid) => {
+      if(room == 0){
+        return { nivel: (room+1) * grid, ...gridLevel[grid] }
+      }
+      return { nivel: (room) * grid, ...gridLevel[grid] }
+    })
   );
 };

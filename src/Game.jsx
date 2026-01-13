@@ -16,7 +16,9 @@ export const Game = () => {
   const [screen, setScreen] = useState({ width: window.innerWidth, height: window.innerHeight });
   const [modalArenaOpen, setModalArenaOpen] = useState(false);
   const [modalDropOpen, setModalDropOpen] = useState(false);
-  const [modalPortalOpen, setModalPortalOpen] = useState(false);
+  const [modalPortalOpen, setModalPortalOpen] = useState(false); 
+  const [modalGameOverOpen, setModalGameOverOpen] = useState(false); // Novo estado
+  const [gameOverMessage, setGameOverMessage] = useState(""); // Novo estado
   const [portalVisible, setPortalVisible] = useState(false);
   const [activeNavModal, setActiveNavModal] = useState(null);
   const [dropInfo, setDropInfo] = useState(null);
@@ -34,8 +36,11 @@ export const Game = () => {
   const playerSize = tileW * 0.2;
   const mapHeight = ROWS * tileH;
 
-  const [pos, setPos] = useState({ x: screen.width / 2, y: mapHeight - 50 });
-  const currentPosRef = useRef({ x: screen.width / 2, y: mapHeight - 50 });
+  const initialSpawnX = useMemo(() => (screen.width / 2) - (playerSize / 2), [screen.width, playerSize]);
+  const initialSpawnY = useMemo(() => mapHeight - 150, [mapHeight]);
+
+  const [pos, setPos] = useState({ x: initialSpawnX, y: initialSpawnY });
+  const currentPosRef = useRef({ x: initialSpawnX, y: initialSpawnY });
   const reqRef = useRef(null);
   const [isMoving, setIsMoving] = useState(false);
   const walkingAudioRef = useRef(null);
@@ -53,8 +58,6 @@ export const Game = () => {
   const touchRef = useRef({ startX: 0, startY: 0, moveX: 0, moveY: 0, active: false });
   const [particles, setParticles] = useState([]);
   const lastParticlePos = useRef({ x: pos.x, y: pos.y });
-
-  const [inventory, setInventory] = useState([]);
 
   // Carrega stats do localStorage ou usa padrão
   const [stats, setStats] = useState(() => {
@@ -97,7 +100,8 @@ export const Game = () => {
         pants: null,  // Calça
         boots: null,  // Botas
         weapon: null, // Espada
-        shield: null  // Escudo
+        shield: null, // Escudo
+        accessory: null // Acessório
       },
       items: [],      // Consumíveis
       cosmetics: []   // Cosméticos
@@ -147,6 +151,35 @@ export const Game = () => {
   const mapContainerRef = useRef(null);
   const scrollRef = useRef(0); // Valor interno da câmera para o cálculo matemático
   const keys = useRef({});
+
+  const removeFicha = () => {
+    setStats(s => ({ ...s, fichas: s.fichas - 1 }));
+    setBattleState('fighting')
+  };
+
+  const handleGameOverClose = useCallback(() => {
+    setModalGameOverOpen(false);
+    // Reset map level
+    setMapLevel(0);
+    setModalPortalOpen(false)
+    setPortalVisible(false);
+    localStorage.setItem('rpg_map_level', 0);
+    // Reset fichas ao reiniciar o jogo
+    setStats(s => ({ ...s, fichas: 30 }));
+    // Reset any other relevant game state, e.g., position
+    const startY = mapHeight - 150;
+    const startX = (screen.width / 2) - (playerSize / 2);
+    setPos({ x: startX, y: startY });
+    currentPosRef.current = { x: startX, y: startY };
+    lastPos.current = { x: startX, y: startY };
+    velocityRef.current = { x: 0, y: 0 };
+    scrollRef.current = mapHeight - screen.height;
+    totalWalkedRef.current = 0;
+    if (progressBarRef.current) {
+      progressBarRef.current.style.width = '0%';
+      progressBarRef.current.style.background = 'cyan';
+    }
+  }, [mapHeight, screen.width, playerSize, setPlayer, setStats, setMapLevel]);
 
   // Listener para redimensionamento da tela (rotação)
   useEffect(() => {
@@ -270,26 +303,13 @@ export const Game = () => {
       const startLevel = playerRef.current.attributes.level;
       setMapInfo({ nivel, tension, mobHp, mobAtk, cRow, startXp, startLevel });
 
-      // Deduz a ficha e abre o modal
-      setStats(s => ({ ...s, fichas: s.fichas - 1 }));
       setBattleState('setup');
       setModalArenaOpen(true);
     }
 
   };
 
-  useEffect(() => {
-    // Check if fichas have reached 0 or less
-    if (stats.fichas <= 0 && mapLevel !== 0) { // Ensure it only triggers if not already on map 0
-      console.log("Fichas esgotadas! Retornando ao mapa inicial e reabastecendo fichas.");
-      setStats(s => ({ ...s, fichas: 30 })); // Reset fichas
-      setMapLevel(0); // Return to map 0
-      setModalArenaOpen(false); // Close any open arena modal
-      setModalDropOpen(false); // Close any open drop modal
-      setModalPortalOpen(false); // Close any open portal modal
-      // Optionally, add a visual cue or a specific message to the user here.
-    }
-  }, [stats.fichas, mapLevel, setStats, setMapLevel, setModalArenaOpen, setModalDropOpen, setModalPortalOpen]);
+
 
   // Limpa itens selecionados que não existem mais no inventário (ex: usados em batalha)
   useEffect(() => {
@@ -575,8 +595,23 @@ export const Game = () => {
     setModalArenaOpen(false);
     setBattleState('none');
 
-    // Deduct 1 ficha when receding
-    setStats(s => ({ ...s, fichas: s.fichas - 1 }));
+    // Check player HP after battle
+    if (playerRef.current.attributes.hp <= 0) {
+      setGameOverMessage("Você foi derrotado em combate! Prepare-se melhor da próxima vez.");
+      setModalGameOverOpen(true);
+      return; // Stop further processing if game over
+    }
+
+    // Deduct 1 ficha when receding (or after battle if not game over)
+    const newFichas = stats.fichas - 1;
+    setStats(s => ({ ...s, fichas: newFichas }));
+
+    // Check if fichas are 0 after receding
+    if (newFichas <= 0) {
+      setGameOverMessage("Suas fichas acabaram! Retorne à base para reabastecer e tentar novamente.");
+      setModalGameOverOpen(true);
+      return; // Stop further processing if game over
+    }
 
     // Verifica se foi uma vitória no topo do mapa (Linha 0)
     if (mapInfo.cRow === 0) {
@@ -589,7 +624,7 @@ export const Game = () => {
         setPortalVisible(true);
       }
     }
-  }, [mapInfo, setStats]);
+  }, [mapInfo, setStats, stats.fichas, playerRef, setModalGameOverOpen, setGameOverMessage]);
 
   const toggleItemSelection = (itemId) => {
     setSelectedItemIds(prev => {
@@ -824,7 +859,7 @@ export const Game = () => {
 
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '20px', marginTop: '30px' }}>
               <button
-                onClick={() => setBattleState('fighting')}
+                onClick={() => removeFicha()}
                 style={{
                   padding: '10px 40px',
                   background: '#e74c3c', color: 'white',
@@ -930,6 +965,36 @@ export const Game = () => {
         activeModal={activeNavModal}
         setActiveModal={setActiveNavModal}
       />
+
+      {/* Modal de Game Over */}
+      <ModalArena isOpen={modalGameOverOpen} onClose={handleGameOverClose} disableBackgroundClose={true}>
+        <div style={{ textAlign: 'center', padding: '20px', color: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <h2 style={{ color: '#e74c3c', marginBottom: '20px', textShadow: '0 0 10px #e74c3c', fontSize: '2rem' }}>
+            FIM DA JORNADA!
+          </h2>
+          <div style={{ fontSize: '60px', marginBottom: '20px' }}>💀</div>
+          <p style={{ fontSize: '18px', marginBottom: '30px', lineHeight: '1.5' }}>
+            {gameOverMessage}
+          </p>
+          <button
+            onClick={handleGameOverClose}
+            style={{
+              padding: '12px 40px',
+              fontSize: '20px',
+              background: '#e74c3c',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontWeight: 'bold',
+              boxShadow: '0 0 20px #e74c3c',
+              textTransform: 'uppercase'
+            }}
+          >
+            Tentar Novamente
+          </button>
+        </div>
+      </ModalArena>
 
       {/* Aviso de Orientação */}
       <OrientationWarning width={screen.width} height={screen.height} />

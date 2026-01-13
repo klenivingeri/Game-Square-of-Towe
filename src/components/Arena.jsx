@@ -32,7 +32,7 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
     playerHp: player.attributes.hp,
     playerMaxHp: player.attributes.maxHp,
     playerAttack: 0,
-    playerShield: 0,
+    playerShield: Math.max(0, Number(player.attributes.shield) || 0),
     tempAttackBonus: 0,
     tempCritBonus: 0,
     playerHit: 0,
@@ -92,7 +92,7 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
       playerHp: player.attributes.hp,
       playerMaxHp: player.attributes.maxHp,
       playerAttack: 0,
-      playerShield: 0,
+      playerShield: Math.max(0, Number(player.attributes.shield) || 0),
       tempAttackBonus: 0,
       tempCritBonus: 0,
       playerHit: 0,
@@ -763,10 +763,7 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
                 }}
               >
                 <div style={{ fontSize: '24px', marginBottom: '5px' }}>
-                  {option.type === 'heal' && '❤'}
-                  {option.type === 'shield' && '🛡'}
-                  {option.type === 'damage' && '⚔'}
-                  {option.type === 'crit' && '🎯'}
+                  {option.icon || (option.type === 'heal' && '❤') || (option.type === 'shield' && '🛡') || (option.type === 'damage' && '⚔') || (option.type === 'crit' && '🎯')}
                 </div>
                 <div style={{ fontWeight: 'bold', color: option.color, textAlign: 'center', marginBottom: '5px', fontSize: '12px' }}>
                   {option.name}

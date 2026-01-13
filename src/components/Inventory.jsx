@@ -19,11 +19,19 @@ export const Inventory = ({ player, setPlayer, gems, setStats }) => {
     { id: 'pants', icon: 'o' },
     { id: 'boots', icon: 'o' },
     { id: 'weapon', icon: 'o' },
-    { id: 'shield', icon: 'o' }
+    { id: 'shield', icon: 'o' },
+    { id: 'accessory', icon: 'o' }
   ];
 
-  // Helper para identificar equipamentos
-  const isEquipment = (item) => ['weapon', 'shield', 'head', 'chest', 'arms', 'pants', 'boots'].includes(item.type);
+  // Helper para identificar consumíveis (droppados ou padrões)
+  const isConsumable = (item) => item && (item.value !== undefined || item.isDefault || (item.id && String(item.id).startsWith('potion_')));
+
+  // Helper para identificar equipamentos (exclui consumíveis que usam 'shield' como tipo)
+  const isEquipment = (item) => {
+    if (!item) return false;
+    if (isConsumable(item)) return false;
+    return ['weapon', 'shield', 'head', 'chest', 'arms', 'pants', 'boots', 'accessory'].includes(item.type);
+  };
 
   // Listas filtradas para as abas
   const equipmentItems = useMemo(() => 
@@ -45,6 +53,7 @@ export const Inventory = ({ player, setPlayer, gems, setStats }) => {
       arms: 'arms',
       pants: 'pants',
       boots: 'boots',
+      accessory: 'accessory'
     };
 
     const slot = slotMap[selectedItem.type];
@@ -244,6 +253,25 @@ export const Inventory = ({ player, setPlayer, gems, setStats }) => {
         newStats[key] = (newStats[key] || 0) + bonus;
       });
       newItem.stats = newStats;
+    }
+
+    // Se for consumível (poção), aumenta seu atributo em 20% do valor atual
+    if (newItem.value !== undefined || ['heal','shield','crit','damage'].includes(newItem.type)) {
+      // Aumenta `value` (usado em consumíveis de batalha)
+      if (typeof newItem.value === 'number') {
+        newItem.value = Math.ceil(newItem.value * 1.2);
+      }
+
+      // Também escala qualquer stat numérico presente (ex: { heal: 50 })
+      if (newItem.stats) {
+        const scaledStats = { ...newItem.stats };
+        Object.keys(scaledStats).forEach(k => {
+          if (typeof scaledStats[k] === 'number') {
+            scaledStats[k] = Math.ceil(scaledStats[k] * 1.2);
+          }
+        });
+        newItem.stats = scaledStats;
+      }
     }
 
     setPlayer(prev => {
