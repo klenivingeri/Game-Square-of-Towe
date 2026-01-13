@@ -10,13 +10,15 @@ import coinSound from './assets/sons/drop-coin.mp3';
 import jewelSound from './assets/sons/drop_jewel.mp3';
 import walkingSound from './assets/sons/sound-of-walking.mp3';
 import { BASE_CONSUMABLES, ItemCard, RARITIES } from './components/StateDriven/Items';
+import { generateArenaMobs } from './data/enemies';
+import { SetupModal } from './components/SetupModal';
 import { OrientationWarning } from './components/OrientationWarning';
 
 export const Game = () => {
   const [screen, setScreen] = useState({ width: window.innerWidth, height: window.innerHeight });
   const [modalArenaOpen, setModalArenaOpen] = useState(false);
   const [modalDropOpen, setModalDropOpen] = useState(false);
-  const [modalPortalOpen, setModalPortalOpen] = useState(false); 
+  const [modalPortalOpen, setModalPortalOpen] = useState(false);
   const [modalGameOverOpen, setModalGameOverOpen] = useState(false); // Novo estado
   const [gameOverMessage, setGameOverMessage] = useState(""); // Novo estado
   const [portalVisible, setPortalVisible] = useState(false);
@@ -75,6 +77,8 @@ export const Game = () => {
   const [battleState, setBattleState] = useState('none'); // 'none', 'setup', 'fighting'
   const [selectedItemIds, setSelectedItemIds] = useState([]);
   const [setupFocusIndex, setSetupFocusIndex] = useState(0);
+  const [upcomingMobs, setUpcomingMobs] = useState([]);
+  const [previewEnemy, setPreviewEnemy] = useState(null);
 
   // --- ESTADO DO JOGADOR (ATRIBUTOS E EQUIPAMENTOS) ---
   // Carrega player do localStorage ou usa padrão
@@ -302,6 +306,12 @@ export const Game = () => {
       const startXp = playerRef.current.attributes.xp;
       const startLevel = playerRef.current.attributes.level;
       setMapInfo({ nivel, tension, mobHp, mobAtk, cRow, startXp, startLevel });
+
+      // Gera e guarda preview dos mobs para a tela de Preparação (mesma lógica usada pela Arena)
+      const mobCount = Math.floor(Math.random() * 6) + 2;
+      const isMapBoss = cRow === 0;
+      const mobsPreview = generateArenaMobs(mobCount, { nivel, mobHp, mobAtk }, isMapBoss);
+      setUpcomingMobs(mobsPreview);
 
       setBattleState('setup');
       setModalArenaOpen(true);
@@ -594,6 +604,7 @@ export const Game = () => {
   const handleCloseArena = useCallback(() => {
     setModalArenaOpen(false);
     setBattleState('none');
+    setUpcomingMobs([]);
 
     // Check player HP after battle
     if (playerRef.current.attributes.hp <= 0) {
@@ -827,97 +838,18 @@ export const Game = () => {
 
       <ModalArena isOpen={modalArenaOpen} disableBackgroundClose onClose={handleCloseArena} >
         {battleState === 'setup' && (
-          <div style={{ textAlign: 'center', padding: '10px', position: 'relative' }}>
-            <h2 style={{ color: 'cyan', marginBottom: '10px' }}>Preparação</h2>
-            <p style={{ color: '#ccc', fontSize: '14px' }}>Selecione até 2 itens para a batalha:</p>
-
-            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap', margin: '20px 0', minHeight: '60px' }}>
-              {consumables.length > 0 ? consumables.map((item, index) => {
-                const isSelected = selectedItemIds.includes(item.id);
-                const isFocused = setupFocusIndex === index;
-                return (
-                  <div
-                    key={item.id}
-                    onClick={() => toggleItemSelection(item.id)}
-                    style={{
-                      width: '50px', height: '50px',
-                      border: isSelected ? '2px solid cyan' : (isFocused ? '2px solid white' : `1px solid ${item.color}`),
-                      borderRadius: '8px',
-                      background: isSelected ? 'rgba(0, 255, 255, 0.2)' : 'rgba(0,0,0,0.3)',
-                      display: 'flex', justifyContent: 'center', alignItems: 'center',
-                      fontSize: '24px', cursor: 'pointer',
-                      boxShadow: isFocused ? '0 0 15px rgba(255,255,255,0.5)' : 'none',
-                      position: 'relative'
-                    }}
-                  >
-                    {item.icon}
-                    {isSelected && <div style={{ position: 'absolute', top: -5, right: -5, background: 'cyan', width: '15px', height: '15px', borderRadius: '50%', border: '1px solid black' }} />}
-                  </div>
-                );
-              }) : <span style={{ color: '#666' }}>Nenhum item consumível.</span>}
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '20px', marginTop: '30px' }}>
-              <button
-                onClick={() => removeFicha()}
-                style={{
-                  padding: '10px 40px',
-                  background: '#e74c3c', color: 'white',
-                  borderRadius: '5px', fontSize: '18px', cursor: 'pointer',
-                  boxShadow: setupFocusIndex === consumables.length ? '0 0 20px white' : '0 0 10px #c0392b',
-                  zIndex: 10
-                }}>
-                ENTRAR NA DUNGEON!
-              </button>
-              <button
-                onClick={handleCloseArena}
-                style={{
-                  padding: '10px 20px',
-                  background: '#7f8c8d', color: 'white',
-                  border: 'none',
-                  borderRadius: '5px', fontSize: '18px', cursor: 'pointer',
-                  boxShadow: '0 0 10px #7f8c8d'
-                }}>
-                RECUAR(-1 FICHA)
-              </button>
-            </div>
-
-            {/* Slots de Consumíveis (Lado Direito) */}
-            <div style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {[0, 1].map(slotIndex => {
-                const itemId = selectedItemIds[slotIndex];
-                const selectedItem = itemId ? consumables.find(i => i.id === itemId) : null;
-
-                const item = selectedItem || {
-                  name: 'Poção de Vida',
-                  icon: '❤',
-                  value: 25,
-                  color: '#e74c3c',
-                  isDefault: true
-                };
-
-                return (
-                  <div key={slotIndex} style={{
-                    width: '50px', height: '50px',
-                    border: selectedItem ? '1px solid #fff' : '1px dashed #555',
-                    borderRadius: '8px',
-                    background: 'rgba(0,0,0,0.5)',
-                    display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
-                    position: 'relative',
-                    opacity: selectedItem ? 1 : 0.8
-                  }}>
-                    <>
-                      <div style={{ fontSize: '20px' }}>{item.icon}</div>
-                      <div style={{ fontSize: '10px', color: 'white', fontWeight: 'bold', position: 'absolute', bottom: '2px', right: '2px', textShadow: '0 0 2px black' }}>
-                        {item.value || (item.stats ? Object.values(item.stats)[0] : '?')}
-                      </div>
-                      {item.isDefault && <div style={{ position: 'absolute', top: -2, right: -2, width: '6px', height: '6px', background: '#e74c3c', borderRadius: '50%' }} />}
-                    </>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          <SetupModal
+            consumables={consumables}
+            selectedItemIds={selectedItemIds}
+            setupFocusIndex={setupFocusIndex}
+            toggleItemSelection={toggleItemSelection}
+            removeFicha={removeFicha}
+            handleCloseArena={handleCloseArena}
+            upcomingMobs={upcomingMobs}
+            previewEnemy={previewEnemy}
+            setPreviewEnemy={setPreviewEnemy}
+            selectedCount={selectedItemIds.length}
+          />
         )}
 
         {battleState === 'fighting' && (
@@ -949,6 +881,7 @@ export const Game = () => {
               setStats={setStats}
               onClose={handleCloseArena}
               battleItems={battleItems}
+              initialMobs={upcomingMobs}
             />
           </>
         )}

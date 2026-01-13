@@ -22,7 +22,7 @@ const BONUS_POOL = [
   { id: 'debuff_healer', name: 'Maldição', description: '-10% Vida (Curandeiros)', type: 'debuff_class', targetClass: 'healer', value: 0.1, color: '#27ae60', icon: '💚' },
 ];
 
-export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClose, battleItems, mapLevel, defeatedBosses, setDefeatedBosses }) => {
+export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClose, battleItems, mapLevel, defeatedBosses, setDefeatedBosses, initialMobs }) => {
   // Configurações da Arena
   const { PLAYER: PLAYER_SIZE, MOB: MOB_SIZE, ELITE: ELITE_SIZE, BOSS: BOSS_SIZE, BONUS: BONUS_SIZE } = SIZES;
   const PLAYER_X = 140; // Posição fixa do player
@@ -84,9 +84,9 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
   useEffect(() => { playerRef.current = player; }, [player]);
 
   useEffect(() => {
-    // 1. Inicializa: Gera de 2 a 7 mobs
+    // 1. Inicializa: Usa initialMobs se fornecido (para manter preview consistente), senão gera de 2 a 7 mobs
     const mobCount = Math.floor(Math.random() * 6) + 2;
-    const initialMobs = generateArenaMobs(mobCount, currentTileData);
+    const initialMobsResolved = (initialMobs && initialMobs.length) ? initialMobs.map(m => ({ ...m })) : generateArenaMobs(mobCount, currentTileData);
 
     gameState.current = {
       playerHp: player.attributes.hp,
@@ -96,7 +96,7 @@ export const Arena = memo(({ currentTileData, player, setPlayer, setStats, onClo
       tempAttackBonus: 0,
       tempCritBonus: 0,
       playerHit: 0,
-      mobs: initialMobs,
+      mobs: initialMobsResolved,
       currentMobIndex: 0,
       active: true,
       combat: false,
